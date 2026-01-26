@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Pixel Park Tycoon</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Title Intro Screen (animated, auto-fades after 3 seconds) -->
+    <div id="title-intro">
+        <div class="intro-content">
+            <div class="intro-coaster-left">
+                <canvas id="intro-coaster1" width="80" height="60"></canvas>
+            </div>
+            <h1 class="intro-title">
+                <span class="title-word">PIXEL</span>
+                <span class="title-word">PARK</span>
+                <span class="title-word">TYCOON</span>
+            </h1>
+            <div class="intro-coaster-right">
+                <canvas id="intro-coaster2" width="80" height="60"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" style="display:none;">
+        <div class="welcome-header">
+            <canvas class="welcome-coaster" id="welcome-coaster1" width="80" height="60"></canvas>
+            <h1 class="welcome-title">PIXEL PARK<br>TYCOON</h1>
+            <canvas class="welcome-coaster" id="welcome-coaster2" width="80" height="60"></canvas>
+        </div>
+        <div class="welcome-preview-container">
+            <canvas id="welcome-preview" width="560" height="220"></canvas>
+        </div>
+        <p class="welcome-tagline">Build rides. Keep guests happy. Grow your park.</p>
+        <div class="welcome-buttons">
+            <button class="play-btn" onclick="showScenarioScreen()">PLAY</button>
+            <button class="how-btn" onclick="showHelp()">→ HOW TO PLAY</button>
+            <button class="credits-btn" onclick="showCredits()">★ CREDITS</button>
+        </div>
+    </div>
+    
+    <!-- Scenario Selection Screen -->
+    <div id="scenario-screen" style="display:none;">
+        <div class="scenario-header">
+            <canvas class="scenario-title-icon" id="scenario-icon1" width="60" height="45"></canvas>
+            <h1 class="scenario-title">PIXEL PARK TYCOON</h1>
+            <canvas class="scenario-title-icon" id="scenario-icon2" width="60" height="45"></canvas>
+        </div>
+        <div id="scenario-grid" class="scenario-grid"></div>
+        <button class="menu-btn back-btn" onclick="showWelcomeScreen()">← BACK TO MENU</button>
+    </div>
+    
+    <!-- Credits Modal -->
+    <div id="credits-modal">
+        <div class="credits-content">
+            <h2>Credits</h2>
+            <div class="credits-text">
+                <p class="credits-main">Built by <span class="credits-name">Tim</span></p>
+                <p class="credits-sub">with a little help from <span class="credits-claude">Claude</span></p>
+            </div>
+            <div class="credits-divider"></div>
+            <p class="credits-year">© 2025</p>
+            <button class="menu-btn" onclick="closeCredits()">BACK</button>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="help-modal">
+        <div class="help-content">
+            <h2>How to play</h2>
+            <p>• Build paths so guests can move through your park</p>
+            <p>• Place attractions, food stalls, and decorations to attract guests</p>
+            <p>• Guests arrive, spend money, and leave as time passes</p>
+            <p>• Follow guest feedback to improve happiness</p>
+            <p>• More guests means more progress and higher status</p>
+            <p class="highlight">Grow your park, attract bigger crowds, and aim for Diamond status.</p>
+            <button class="menu-btn" onclick="closeHelp()">GOT IT!</button>
+        </div>
+    </div>
+    
+    <!-- Landscape Warning -->
+    <div id="landscape-warning">
+        <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="#ffd93d" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="2"/>
+            <line x1="12" y1="18" x2="12" y2="18.01"/>
+        </svg>
+        <p class="landscape-text">Please rotate your device<br>for the best experience</p>
+    </div>
+    
+    <!-- Game Container -->
+    <div id="game-container" style="display:none;">
+        <!-- Top Bar -->
+        <div id="top-bar">
+            <div class="logo"><canvas id="logo-icon" width="20" height="20" style="image-rendering:pixelated;"></canvas><span class="logo-text">PIXEL PARK TYCOON</span></div>
+            <div class="top-controls">
+                <button class="icon-btn" onclick="showHelp()" title="Help">?</button>
+                <button class="icon-btn" id="sfx-btn" onclick="toggleSFX()" title="SFX"><canvas id="sfx-icon" width="16" height="16"></canvas></button>
+                <button class="icon-btn" id="music-btn" onclick="toggleMusic()" title="Music"><canvas id="music-icon" width="16" height="16"></canvas></button>
+                <button class="icon-btn" id="pause-btn" onclick="togglePause()" title="Pause"><canvas id="pause-icon" width="16" height="16"></canvas></button>
+                <button id="debug-btn" onclick="toggleDebugPanel()">DEBUG</button>
+            </div>
+        </div>
+        
+        <!-- Status Bar -->
+        <div id="status-bar">
+            <div class="stat" data-stat="time"><canvas class="stat-icon" id="time-icon" width="16" height="16"></canvas><span id="time-display">Monday (morning)</span></div>
+            <div class="stat" data-stat="money"><canvas class="stat-icon" id="coin-icon" width="16" height="16"></canvas><span id="money-display">€5.000</span></div>
+            <div class="stat" data-stat="guests"><canvas class="stat-icon" id="guest-icon" width="16" height="16"></canvas><span id="guest-display">0</span><canvas class="stat-arrow" id="guest-arrow" width="10" height="10" style="display:none;"></canvas></div>
+            <div class="stat" data-stat="happy"><canvas class="stat-icon" id="happy-icon" width="16" height="16"></canvas><span id="happy-display">Okay</span><canvas class="stat-arrow" id="happy-arrow" width="10" height="10" style="display:none;"></canvas></div>
+            <div class="stat-spacer"></div>
+            <div class="stat stat-goals" data-stat="goals"><canvas class="stat-icon" id="goals-icon" width="16" height="16"></canvas><span id="goals-display">Bronze challenge · 250 guests</span></div>
+        </div>
+        
+        <!-- Notification Bar -->
+        <div id="notification-bar"><canvas id="notif-icon" width="16" height="16" style="image-rendering:pixelated;"></canvas><span id="notif-text">Welcome! Start building your dream park!</span></div>
+        
+        <!-- Main Area -->
+        <div id="main-area">
+            <!-- Park View -->
+            <div id="park-container">
+                <canvas id="park-canvas" width="640" height="384"></canvas>
+                <canvas id="particle-canvas" width="640" height="384"></canvas>
+                <div id="pause-overlay">PAUSED</div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div id="sidebar">
+                <div class="sidebar-section">
+                    <div class="section-title"><canvas id="build-icon" width="12" height="12" style="image-rendering:pixelated;"></canvas>BUILD</div>
+                    <div class="tab-container">
+                        <button class="tab-btn active" data-tab="paths" onclick="switchTab('paths')"><canvas class="tab-icon" id="tab-paths" width="18" height="18"></canvas><span class="tab-label">PATHS</span></button>
+                        <button class="tab-btn" data-tab="rides" onclick="switchTab('rides')"><canvas class="tab-icon" id="tab-rides" width="18" height="18"></canvas><span class="tab-label">RIDES</span></button>
+                        <button class="tab-btn" data-tab="coasters" onclick="switchTab('coasters')"><canvas class="tab-icon" id="tab-coasters" width="18" height="18"></canvas><span class="tab-label">COASTERS</span></button>
+                        <button class="tab-btn" data-tab="food" onclick="switchTab('food')"><canvas class="tab-icon" id="tab-food" width="18" height="18"></canvas><span class="tab-label">FOOD</span></button>
+                        <button class="tab-btn" data-tab="decor" onclick="switchTab('decor')"><canvas class="tab-icon" id="tab-decor" width="18" height="18"></canvas><span class="tab-label">DECOR</span></button>
+                    </div>
+                    <div id="tab-paths" class="tab-content active"><div class="build-items-grid"></div></div>
+                    <div id="tab-rides" class="tab-content"><div class="build-items-grid"></div></div>
+                    <div id="tab-coasters" class="tab-content"><div class="build-items-grid"></div></div>
+                    <div id="tab-food" class="tab-content"><div class="build-items-grid"></div></div>
+                    <div id="tab-decor" class="tab-content"><div class="build-items-grid"></div></div>
+                </div>
+                <div class="sidebar-section demolish-section">
+                    <button class="demolish-btn" id="demolish-btn" onclick="selectDemolish()">
+                        <canvas class="item-icon" id="demolish-tool-icon" width="16" height="16"></canvas>
+                        <span class="item-name">Demolish</span>
+                        <span class="item-cost">€50</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tooltip -->
+    <div id="tooltip">
+        <div class="tooltip-name"></div>
+        <div class="tooltip-cost"></div>
+        <div class="tooltip-running"></div>
+        <div class="tooltip-desc"></div>
+    </div>
+    
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas"></canvas>
+    
+    <!-- Debug Panel -->
+    <div id="debug-panel"></div>
+    
+    <!-- Scripts (load order matters!) -->
+    <script src="js/namespace.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/scenarios/classic.js"></script>
+    <script src="js/scenarios/sandbox.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/debug.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
