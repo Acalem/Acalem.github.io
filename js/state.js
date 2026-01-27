@@ -58,6 +58,8 @@
                 // Gameplay
                 boosts: [],
                 goalsAchieved: scenario.goals.map(() => false),
+                daysSinceLastBuild: 0,
+                staleNotified: false,
                 
                 // Tips/notifications
                 lastTip: {},

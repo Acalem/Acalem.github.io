@@ -15,6 +15,38 @@
     PPT.config.TICKS_PER_DAY = 84;
     PPT.config.DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
+    // Day period boundaries (as percentage of TICKS_PER_DAY)
+    // night(0-7%) -> morning(7-36%) -> afternoon(36-64%) -> evening(64-93%) -> night(93-100%)
+    PPT.config.DAY_PERIODS = {
+        night1End: 0.07,      // ~6 ticks at 84
+        morningEnd: 0.36,     // ~30 ticks at 84
+        afternoonEnd: 0.64,   // ~54 ticks at 84
+        eveningEnd: 0.93      // ~78 ticks at 84
+    };
+    
+    // Helper function to get period boundaries in ticks
+    PPT.config.getPeriodTicks = function() {
+        var tpd = PPT.config.TICKS_PER_DAY;
+        var dp = PPT.config.DAY_PERIODS;
+        return {
+            night1End: Math.floor(tpd * dp.night1End),
+            morningEnd: Math.floor(tpd * dp.morningEnd),
+            afternoonEnd: Math.floor(tpd * dp.afternoonEnd),
+            eveningEnd: Math.floor(tpd * dp.eveningEnd)
+        };
+    };
+    
+    // Helper function to get current day period from tick
+    PPT.config.getDayPeriod = function(tick) {
+        var t = tick % PPT.config.TICKS_PER_DAY;
+        var p = PPT.config.getPeriodTicks();
+        if (t < p.night1End) return 'night';
+        if (t < p.morningEnd) return 'morning';
+        if (t < p.afternoonEnd) return 'afternoon';
+        if (t < p.eveningEnd) return 'evening';
+        return 'night';
+    };
+    
     // Guest colors for sprite variation
     PPT.config.GUEST_COLORS = ['#ff7dad', '#5da6ff', '#7bdb87', '#ffe94d', '#c7a4f6', '#84d7fc', '#ff9c52', '#ff7b7b'];
     PPT.config.HAIR_COLORS = ['#6c5043', '#3c2820', '#ffe94d', '#ff7b7b', '#2a2a3e', '#9b6a3b'];

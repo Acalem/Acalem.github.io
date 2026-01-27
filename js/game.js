@@ -128,7 +128,13 @@
         let boost = 0;
         G.boosts.forEach(b => boost += b.amt);
         
-        return Math.max(1, Math.min(100, h + boost));
+        // Staleness debuff - 2+ days without building
+        let stalenessDebuff = 0;
+        if (G.daysSinceLastBuild >= 2) {
+            stalenessDebuff = -20;
+        }
+        
+        return Math.max(1, Math.min(100, h + boost + stalenessDebuff));
     };
     
     PPT.game.getHappyLabel = function(h) {
@@ -222,6 +228,10 @@
         if (!G.debugMode) G.money -= d.cost;
         PPT.ui.updateMoney();
         PPT.game.spawnParticle(gx * TILE_SIZE + 16, gy * TILE_SIZE + 16, 'neg', G.debugMode ? 'FREE' : '-€' + d.cost);
+        
+        // Reset staleness - player is building again
+        G.daysSinceLastBuild = 0;
+        G.staleNotified = false;
         
         // Apply boost
         const boosts = scenario.boosts;
@@ -463,11 +473,11 @@
         
         const scenario = PPT.currentScenario;
         const eco = scenario.economy;
+        const tpd = PPT.config.TICKS_PER_DAY;
         
         G.tick++;
         const dp = PPT.render.getDayPart();
-        const prev = (G.tick - 1) % 84;
-        const prevDp = prev < 6 ? 'night' : prev < 30 ? 'morning' : prev < 54 ? 'afternoon' : prev < 78 ? 'evening' : 'night';
+        const prevDp = PPT.config.getDayPeriod(G.tick - 1);
         
         // Night transition - park closes
         if (dp === 'night' && prevDp === 'evening') {
@@ -499,9 +509,12 @@
                 PPT.ui.updateMoney();
             }
             
+            // Food income: each food stall earns foodRevenuePerStall, capped by guest count
             const c = PPT.game.countBuildings();
             if (c.food > 0 && G.guests > 0) {
-                G.money += G.guests * eco.foodRevenuePerGuest;
+                const maxFoodIncome = c.food * eco.foodRevenuePerStall;
+                const actualFoodIncome = Math.min(maxFoodIncome, G.guests);
+                G.money += actualFoodIncome;
             }
         }
         
@@ -519,8 +532,16 @@
         PPT.game.checkGoals();
         
         // Day progression
-        if (G.tick % 84 === 0) {
+        if (G.tick % tpd === 0) {
             G.day++;
+            G.daysSinceLastBuild++;
+            
+            // Staleness check - 2 days without building
+            if (G.daysSinceLastBuild >= 2 && !G.staleNotified) {
+                G.staleNotified = true;
+                PPT.ui.showNotif('Guests are bored! They haven\'t seen anything new in a while.', 'negative');
+            }
+            
             if (G.day > 365) { G.day = 1; G.year++; }
         }
         

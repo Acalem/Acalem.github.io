@@ -32,7 +32,10 @@
         if (notifTimeout) clearTimeout(notifTimeout);
         notifTimeout = setTimeout(function() {
             bar.className = 'idle';
-            textEl.textContent = '';
+            textEl.textContent = 'No news is good news.';
+            if (icon) {
+                PPT.render.drawIcon(icon.getContext('2d'), 'lightbulb', 16);
+            }
         }, 6000);
     };
     

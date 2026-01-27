@@ -83,7 +83,7 @@
         // Economy formulas
         economy: {
             guestEntryFee: 10,           // € per guest entering
-            foodRevenuePerGuest: 1,      // € per guest per tick if food exists
+            foodRevenuePerStall: 50,     // € per food stall per tick, capped by guest count
             demolishCost: 50,
             // Guest generation: log(1 + totalAttractionCost / divisor) * (happiness/100) * timeMult * weekendBonus
             guestGenDivisor: 2000,

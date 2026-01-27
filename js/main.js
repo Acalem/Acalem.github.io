@@ -80,10 +80,6 @@
             return;
         }
         
-        // Draw coaster icons
-        drawCoasterDecor(document.getElementById('intro-coaster1'), true);
-        drawCoasterDecor(document.getElementById('intro-coaster2'), false);
-        
         // Fade out after 1.5 seconds
         setTimeout(function() {
             intro.classList.add('fade-out');
@@ -810,9 +806,8 @@
         
         grid.innerHTML = '';
         
-        // Draw header coasters
-        drawCoasterDecor(document.getElementById('scenario-icon1'), false);
-        drawCoasterDecor(document.getElementById('scenario-icon2'), true);
+        // Draw back arrow for mobile
+        drawBackArrow(document.getElementById('back-arrow-icon'));
         
         // Define all 6 scenario slots with nice names
         var scenarios = [
@@ -844,20 +839,16 @@
             drawScenarioPreview(previewCanvas, index);
             preview.appendChild(previewCanvas);
             
-            // Lock icon
-            var lockIcon = document.createElement('div');
-            lockIcon.className = 'scenario-lock-icon';
-            lockIcon.textContent = '🔒';
-            preview.appendChild(lockIcon);
-            
-            // Overlay for locked
-            var overlay = document.createElement('div');
-            overlay.className = 'scenario-overlay';
-            var overlayText = document.createElement('div');
-            overlayText.className = 'scenario-overlay-text';
-            overlayText.textContent = 'LOCKED';
-            overlay.appendChild(overlayText);
-            preview.appendChild(overlay);
+            // Overlay for locked scenarios
+            if (isLocked) {
+                var overlay = document.createElement('div');
+                overlay.className = 'scenario-overlay';
+                var overlayText = document.createElement('div');
+                overlayText.className = 'scenario-overlay-text';
+                overlayText.textContent = 'Coming soon';
+                overlay.appendChild(overlayText);
+                preview.appendChild(overlay);
+            }
             
             card.appendChild(preview);
             
@@ -870,16 +861,7 @@
             name.textContent = slot.name;
             info.appendChild(name);
             
-            var status = document.createElement('div');
-            status.className = 'scenario-card-status';
-            if (isLocked) {
-                status.textContent = 'LOCKED';
-            }
-            info.appendChild(status);
-            
-            card.appendChild(info);
-            
-            // Start button (only for playable)
+            // Start button for playable, locked button for locked - inside info section
             if (!isLocked && s) {
                 var startBtn = document.createElement('button');
                 startBtn.className = 'scenario-start-btn';
@@ -889,7 +871,7 @@
                     selectedScenario = slot.id;
                     startGame();
                 };
-                card.appendChild(startBtn);
+                info.appendChild(startBtn);
                 
                 card.onclick = function() {
                     document.querySelectorAll('.scenario-card-new').forEach(function(c) {
@@ -898,10 +880,41 @@
                     card.classList.add('selected');
                     selectedScenario = slot.id;
                 };
+            } else if (isLocked) {
+                var lockedBtn = document.createElement('button');
+                lockedBtn.className = 'scenario-start-btn locked-btn';
+                lockedBtn.textContent = 'LOCKED';
+                lockedBtn.disabled = true;
+                info.appendChild(lockedBtn);
             }
+            
+            card.appendChild(info);
             
             grid.appendChild(card);
         });
+    }
+    
+    function drawBackArrow(canvas) {
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var sz = 24;
+        ctx.clearRect(0, 0, sz, sz);
+        
+        // Pixel art chevron pointing left < shape - white for contrast on pink
+        ctx.fillStyle = '#ffffff';
+        
+        // Clean chevron
+        ctx.fillRect(14, 4, 3, 3);
+        ctx.fillRect(11, 7, 3, 3);
+        ctx.fillRect(8, 10, 3, 4);
+        ctx.fillRect(11, 14, 3, 3);
+        ctx.fillRect(14, 17, 3, 3);
+        
+        // Shadow for depth
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(8, 14, 3, 2);
+        ctx.fillRect(11, 17, 3, 2);
+        ctx.fillRect(14, 20, 3, 2);
     }
     
     function drawScenarioPreview(canvas, index) {
@@ -1123,6 +1136,100 @@
         warning.classList.toggle('active', isSmallLandscape && gameActive);
     }
     
+    // ==================== MOBILE PAN OVERLAY ====================
+    
+    function setupPanOverlay() {
+        var parkContainer = document.getElementById('park-container');
+        var panOverlay = document.getElementById('pan-overlay');
+        var leftArrow = document.getElementById('pan-arrow-left');
+        var rightArrow = document.getElementById('pan-arrow-right');
+        var parkCanvas = document.getElementById('park-canvas');
+        
+        if (!parkContainer || !panOverlay || !leftArrow || !rightArrow) return;
+        
+        // Draw pixel art arrows (50x50 size)
+        drawPanArrow(leftArrow, 'left');
+        drawPanArrow(rightArrow, 'right');
+        
+        var panTimeout;
+        var isMobile = window.matchMedia('(max-width: 768px)').matches || 'ontouchstart' in window;
+        
+        if (isMobile) {
+            // Show overlay briefly on game start to hint at scrolling
+            setTimeout(function() {
+                if (parkContainer.scrollWidth > parkContainer.clientWidth) {
+                    panOverlay.classList.add('visible');
+                    panTimeout = setTimeout(function() {
+                        panOverlay.classList.remove('visible');
+                    }, 2000);
+                }
+            }, 500);
+            
+            // Show overlay when touching the park area (if nothing selected)
+            var showPanHint = function() {
+                if (!G.selected && !G.demolishMode && parkContainer.scrollWidth > parkContainer.clientWidth) {
+                    panOverlay.classList.add('visible');
+                    if (panTimeout) clearTimeout(panTimeout);
+                    panTimeout = setTimeout(function() {
+                        panOverlay.classList.remove('visible');
+                    }, 1500);
+                }
+            };
+            
+            parkContainer.addEventListener('touchstart', showPanHint, { passive: true });
+            if (parkCanvas) {
+                parkCanvas.addEventListener('touchstart', showPanHint, { passive: true });
+            }
+            
+            parkContainer.addEventListener('scroll', function() {
+                if (panTimeout) clearTimeout(panTimeout);
+                panOverlay.classList.remove('visible');
+            }, { passive: true });
+        }
+    }
+    
+    function drawPanArrow(canvas, direction) {
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var sz = 50;
+        ctx.clearRect(0, 0, sz, sz);
+        
+        // Yellow pixel art arrow - larger for 50x50
+        ctx.fillStyle = '#ffd93d';
+        
+        if (direction === 'left') {
+            // Left pointing chevron arrow
+            ctx.fillRect(20, 10, 5, 5);
+            ctx.fillRect(15, 15, 5, 5);
+            ctx.fillRect(10, 20, 5, 10);
+            ctx.fillRect(15, 30, 5, 5);
+            ctx.fillRect(20, 35, 5, 5);
+            // Shaft
+            ctx.fillRect(20, 15, 20, 20);
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(10, 30, 5, 3);
+            ctx.fillRect(15, 35, 5, 3);
+            ctx.fillRect(20, 35, 20, 3);
+        } else {
+            // Right pointing chevron arrow
+            ctx.fillRect(25, 10, 5, 5);
+            ctx.fillRect(30, 15, 5, 5);
+            ctx.fillRect(35, 20, 5, 10);
+            ctx.fillRect(30, 30, 5, 5);
+            ctx.fillRect(25, 35, 5, 5);
+            // Shaft
+            ctx.fillRect(10, 15, 20, 20);
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(35, 30, 5, 3);
+            ctx.fillRect(30, 35, 5, 3);
+            ctx.fillRect(10, 35, 20, 3);
+        }
+    }
+    
     // ==================== START GAME ====================
     
     window.startGame = function() {
@@ -1170,20 +1277,27 @@
             }
         });
         parkCanvas.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
-            G.hover = {
-                x: Math.floor((t.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
-                y: Math.floor((t.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
-            };
+            // Only prevent default if something is selected (for building/demolishing)
+            // Otherwise allow scrolling
+            if (G.selected || G.demolishMode) {
+                e.preventDefault();
+                var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
+                G.hover = {
+                    x: Math.floor((t.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
+                    y: Math.floor((t.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
+                };
+            }
         }, { passive: false });
         parkCanvas.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-            var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
-            G.hover = {
-                x: Math.floor((t.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
-                y: Math.floor((t.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
-            };
+            // Only prevent default if something is selected
+            if (G.selected || G.demolishMode) {
+                e.preventDefault();
+                var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
+                G.hover = {
+                    x: Math.floor((t.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
+                    y: Math.floor((t.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
+                };
+            }
         }, { passive: false });
         parkCanvas.addEventListener('touchend', function(e) {
             if (!G.hover) return;
@@ -1224,6 +1338,9 @@
                 PPT.render.drawIcon(document.getElementById('pause-icon')?.getContext('2d'), G.paused ? 'play' : 'pause', 16, false);
             });
         }
+        
+        // Setup mobile pan overlay
+        setupPanOverlay();
         
         // Build UI
         PPT.ui.initIcons();
@@ -1285,10 +1402,6 @@
     // ==================== INITIALIZATION ====================
     
     function init() {
-        // Draw welcome screen coasters
-        drawCoasterDecor(document.getElementById('welcome-coaster1'), false);
-        drawCoasterDecor(document.getElementById('welcome-coaster2'), true);
-        
         // Setup debug mode
         setupDebugMode();
         

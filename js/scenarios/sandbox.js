@@ -76,7 +76,7 @@
         // Economy - same as classic
         economy: {
             guestEntryFee: 10,
-            foodRevenuePerGuest: 1,
+            foodRevenuePerStall: 50,
             demolishCost: 50,
             guestGenDivisor: 2000,
             foodPerGuests: 50,

@@ -9,29 +9,21 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Title Intro Screen (animated, auto-fades after 3 seconds) -->
+    <!-- Title Intro Screen (animated, auto-fades after 1.5 seconds) -->
     <div id="title-intro">
         <div class="intro-content">
-            <div class="intro-coaster-left">
-                <canvas id="intro-coaster1" width="80" height="60"></canvas>
-            </div>
             <h1 class="intro-title">
                 <span class="title-word">PIXEL</span>
                 <span class="title-word">PARK</span>
                 <span class="title-word">TYCOON</span>
             </h1>
-            <div class="intro-coaster-right">
-                <canvas id="intro-coaster2" width="80" height="60"></canvas>
-            </div>
         </div>
     </div>
     
     <!-- Welcome Screen -->
     <div id="welcome-screen" style="display:none;">
         <div class="welcome-header">
-            <canvas class="welcome-coaster" id="welcome-coaster1" width="80" height="60"></canvas>
             <h1 class="welcome-title">PIXEL PARK<br>TYCOON</h1>
-            <canvas class="welcome-coaster" id="welcome-coaster2" width="80" height="60"></canvas>
         </div>
         <div class="welcome-preview-container">
             <canvas id="welcome-preview" width="560" height="220"></canvas>
@@ -39,7 +31,7 @@
         <p class="welcome-tagline">Build rides. Keep guests happy. Grow your park.</p>
         <div class="welcome-buttons">
             <button class="play-btn" onclick="showScenarioScreen()">PLAY</button>
-            <button class="how-btn" onclick="showHelp()">→ HOW TO PLAY</button>
+            <button class="how-btn" onclick="showHelp()">HOW TO PLAY</button>
             <button class="credits-btn" onclick="showCredits()">★ CREDITS</button>
         </div>
     </div>
@@ -47,12 +39,15 @@
     <!-- Scenario Selection Screen -->
     <div id="scenario-screen" style="display:none;">
         <div class="scenario-header">
-            <canvas class="scenario-title-icon" id="scenario-icon1" width="60" height="45"></canvas>
             <h1 class="scenario-title">PIXEL PARK TYCOON</h1>
-            <canvas class="scenario-title-icon" id="scenario-icon2" width="60" height="45"></canvas>
+        </div>
+        <div class="scenario-back-mobile">
+            <button class="back-arrow-btn" onclick="showWelcomeScreen()">
+                <canvas id="back-arrow-icon" width="24" height="24"></canvas>
+            </button>
         </div>
         <div id="scenario-grid" class="scenario-grid"></div>
-        <button class="menu-btn back-btn" onclick="showWelcomeScreen()">← BACK TO MENU</button>
+        <button class="menu-btn back-btn desktop-only" onclick="showWelcomeScreen()">BACK TO MENU</button>
     </div>
     
     <!-- Credits Modal -->
@@ -126,6 +121,12 @@
                 <canvas id="park-canvas" width="640" height="384"></canvas>
                 <canvas id="particle-canvas" width="640" height="384"></canvas>
                 <div id="pause-overlay">PAUSED</div>
+            </div>
+            
+            <!-- Pan gesture overlay (outside park-container for fixed positioning) -->
+            <div id="pan-overlay">
+                <canvas id="pan-arrow-left" class="pan-arrow" width="50" height="50"></canvas>
+                <canvas id="pan-arrow-right" class="pan-arrow" width="50" height="50"></canvas>
             </div>
             
             <!-- Sidebar -->

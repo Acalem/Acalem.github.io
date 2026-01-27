@@ -46,29 +46,40 @@
     
     function getDayPart() {
         if (!G) return 'morning';
-        const t = G.tick % 84;
-        if (t < 6) return 'night';
-        if (t < 30) return 'morning';
-        if (t < 54) return 'afternoon';
-        if (t < 78) return 'evening';
-        return 'night';
+        return PPT.config.getDayPeriod(G.tick);
     }
     
     function getDayTint() {
         if (!G) return { r: 255, g: 255, b: 255, a: 0 };
-        const t = G.tick % 84;
-        if (t < 6) return { r: 10, g: 10, b: 40, a: 0.55 };
-        if (t < 12) return { r: 10, g: 10, b: 40, a: 0.55 * (1 - (t - 6) / 6) };
-        if (t < 54) return { r: 255, g: 255, b: 255, a: 0 };
-        if (t < 78) {
-            const p = (t - 54) / 24;
+        var tpd = PPT.config.TICKS_PER_DAY;
+        var p = PPT.config.getPeriodTicks();
+        var t = G.tick % tpd;
+        
+        // Night (early)
+        if (t < p.night1End) return { r: 10, g: 10, b: 40, a: 0.55 };
+        
+        // Dawn transition (night1End to a bit into morning)
+        var dawnEnd = p.night1End + Math.floor(tpd * 0.07); // 7% of day for dawn
+        if (t < dawnEnd) {
+            var dawnProgress = (t - p.night1End) / (dawnEnd - p.night1End);
+            return { r: 10, g: 10, b: 40, a: 0.55 * (1 - dawnProgress) };
+        }
+        
+        // Day (morning to afternoon)
+        if (t < p.afternoonEnd) return { r: 255, g: 255, b: 255, a: 0 };
+        
+        // Evening transition
+        if (t < p.eveningEnd) {
+            var eveningProgress = (t - p.afternoonEnd) / (p.eveningEnd - p.afternoonEnd);
             return {
-                r: Math.round(255 - p * 245),
-                g: Math.round(180 - p * 170),
-                b: Math.round(120 - p * 80),
-                a: 0.15 + p * 0.4
+                r: Math.round(255 - eveningProgress * 245),
+                g: Math.round(180 - eveningProgress * 170),
+                b: Math.round(120 - eveningProgress * 80),
+                a: 0.15 + eveningProgress * 0.4
             };
         }
+        
+        // Night (late)
         return { r: 10, g: 10, b: 40, a: 0.55 };
     }
     
