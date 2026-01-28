@@ -682,6 +682,141 @@ body {
     margin-top: 15px;
 }
 
+/* ==================== SETTINGS MODAL ==================== */
+#settings-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+#settings-modal.active { display: flex; }
+
+.settings-content {
+    background: linear-gradient(180deg, #2d1b4e 0%, #1e1235 100%);
+    border: 4px solid #ffd93d;
+    border-radius: 12px;
+    padding: 25px 30px;
+    max-width: 340px;
+    width: 90%;
+}
+
+.settings-content h2 {
+    color: #ffd93d;
+    margin-bottom: 20px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.settings-label-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-label-group canvas {
+    image-rendering: pixelated;
+}
+
+.settings-label {
+    color: #ddd;
+    font-size: 9px;
+}
+
+.settings-toggle {
+    background: linear-gradient(180deg, #444 0%, #333 100%);
+    border: 2px solid #666;
+    border-radius: 6px;
+    padding: 6px 14px;
+    min-width: 55px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', cursive;
+    transition: all 0.2s;
+}
+
+.settings-toggle .toggle-text {
+    font-size: 7px;
+    color: #aaa;
+}
+
+.settings-toggle.active {
+    background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+    border-color: #66bb6a;
+}
+
+.settings-toggle.active .toggle-text {
+    color: #fff;
+}
+
+.settings-toggle:hover {
+    transform: scale(1.05);
+}
+
+.settings-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,217,61,0.3), transparent);
+    margin: 16px 0;
+}
+
+.settings-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, #3d2963 0%, #2d1b4e 100%);
+    border: 2px solid #5a3d7a;
+    border-radius: 8px;
+    color: #ddd;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.settings-action-btn:hover {
+    background: linear-gradient(180deg, #4d3973 0%, #3d2963 100%);
+    border-color: #7a5d9a;
+    transform: scale(1.02);
+}
+
+.settings-action-btn canvas {
+    image-rendering: pixelated;
+}
+
+.settings-exit-btn {
+    background: linear-gradient(180deg, #5a3030 0%, #4a2525 100%);
+    border-color: #7a4040;
+}
+
+.settings-exit-btn:hover {
+    background: linear-gradient(180deg, #6a4040 0%, #5a3030 100%);
+    border-color: #9a5050;
+}
+
+.settings-close-row {
+    display: flex;
+    justify-content: center;
+}
+
 /* ==================== GAME CONTAINER ==================== */
 #game-container {
     display: none;
@@ -956,8 +1091,8 @@ body {
     font-family: 'Press Start 2P', cursive;
     font-size: 6px;
     padding: 8px 10px;
-    background: rgba(255,68,68,0.15);
-    border: 2px solid #ff4444;
+    background: rgba(76,175,80,0.15);
+    border: 2px solid #4caf50;
     border-radius: 6px;
     cursor: pointer;
     text-align: center;
@@ -968,11 +1103,12 @@ body {
     width: 100%;
 }
 
-.demolish-btn:hover { background: rgba(255,68,68,0.4); transform: translateY(-1px); }
-.demolish-btn.selected { background: rgba(255,68,68,0.5); border-color: #fff; }
+.demolish-btn:hover { background: rgba(76,175,80,0.4); transform: translateY(-1px); }
+.demolish-btn.selected { background: rgba(76,175,80,0.5); border-color: #fff; }
 .demolish-btn .item-icon { width: 18px; height: 18px; }
 .demolish-btn .item-name { flex: 1; text-align: left; }
-.demolish-btn .item-cost { color: #ff8c42; }
+.demolish-btn .item-cost { color: #4caf50; }
+.demolish-btn .sell-refund { color: #4caf50; font-weight: bold; }
 
 /* ==================== TOOLTIP ==================== */
 #tooltip {
@@ -993,7 +1129,7 @@ body {
 
 .tooltip-name { color: #ffd93d; margin-bottom: 5px; }
 .tooltip-cost { color: #6bcb77; }
-.tooltip-running { color: #ff8c42; font-size: 7px; }
+.tooltip-running { color: #ff6b6b; font-size: 7px; }
 .tooltip-desc { color: #ccc; font-size: 7px; margin-top: 4px; white-space: pre-line; }
 
 /* ==================== CONFETTI ==================== */
@@ -1066,6 +1202,33 @@ body {
 .debug-legend { display: flex; gap: 15px; margin-top: 5px; font-size: 7px; }
 .debug-legend span { display: flex; align-items: center; gap: 4px; }
 .debug-legend-color { width: 12px; height: 3px; }
+
+.debug-speed-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: rgba(255,107,157,0.2);
+    border-radius: 6px;
+    border: 1px solid #ff6b9d;
+}
+.debug-speed-label { color: #ff6b9d; font-size: 8px; }
+.debug-speed-btn {
+    background: linear-gradient(180deg, #ff6b9d 0%, #d44d7a 100%);
+    border: 2px solid #fff;
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: #fff;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.debug-speed-btn:hover {
+    transform: scale(1.1);
+    background: linear-gradient(180deg, #ff8bbd 0%, #ff6b9d 100%);
+}
 
 /* ==================== LANDSCAPE WARNING ==================== */
 #landscape-warning {
@@ -1257,6 +1420,15 @@ body {
     .scenario-desc { font-size: 6px; }
     
     .help-content { margin: 10px; max-width: calc(100% - 20px); font-size: 8px; padding: 15px; max-height: 90vh; overflow-y: auto; }
+    .help-content h2 { font-size: 12px; }
+    .help-content p { margin-bottom: 8px; }
+    
+    .settings-content { margin: 10px; max-width: calc(100% - 20px); padding: 20px; }
+    .settings-content h2 { font-size: 12px; }
+    .settings-label { font-size: 9px; }
+    .settings-toggle { padding: 5px 12px; min-width: 50px; }
+    .settings-toggle .toggle-text { font-size: 7px; }
+    .settings-action-btn { font-size: 7px; padding: 10px 12px; }
     .help-content h2 { font-size: 12px; }
     .help-content p { margin-bottom: 8px; }
     

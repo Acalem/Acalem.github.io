@@ -75,7 +75,17 @@
             G.buildings.push({ type: 'tiles', x: i, y: 5 });
         }
         
-        // Initialize birds
+        // Initialize birds and effects
+        PPT.game.initBirds();
+        G.leaves = [];
+        G.sparkles = [];
+    };
+    
+    /**
+     * Initialize birds (called separately when loading a save)
+     */
+    PPT.game.initBirds = function() {
+        const C = PPT.config.C;
         G.birds = [];
         for (let i = 0; i < 4; i++) {
             G.birds.push({
@@ -88,7 +98,6 @@
                 size: 3 + Math.random() * 2
             });
         }
-        
         G.leaves = [];
         G.sparkles = [];
     };
@@ -128,9 +137,15 @@
         let boost = 0;
         G.boosts.forEach(b => boost += b.amt);
         
-        // Staleness debuff - 2+ days without building
+        // Staleness debuff - progressive penalty for days without building
         let stalenessDebuff = 0;
-        if (G.daysSinceLastBuild >= 2) {
+        if (G.daysSinceLastBuild >= 5) {
+            stalenessDebuff = -50;
+        } else if (G.daysSinceLastBuild >= 4) {
+            stalenessDebuff = -40;
+        } else if (G.daysSinceLastBuild >= 3) {
+            stalenessDebuff = -30;
+        } else if (G.daysSinceLastBuild >= 2) {
             stalenessDebuff = -20;
         }
         
@@ -240,6 +255,10 @@
         else if (d.cat === 'food') G.boosts.push({ amt: boosts.food.amount, ticks: boosts.food.ticks });
         
         PPT.audio.playSound('build');
+        
+        // Auto-save after building
+        PPT.state.save();
+        
         return true;
     };
     
@@ -250,20 +269,15 @@
         const c = G.grid[gy][gx];
         if (!c || c.perm) return false;
         
-        const demCost = scenario.economy.demolishCost;
-        // Skip money check in debug mode
-        if (!G.debugMode && G.money < demCost) {
-            PPT.ui.showNotif('Not enough money to demolish!', 'negative');
-            PPT.audio.playSound('error');
-            return false;
-        }
-        
         let tx = gx, ty = gy;
         if (c.parent) { tx = c.parent.x; ty = c.parent.y; }
         
         const tc = G.grid[ty][tx];
         const d = scenario.buildings[tc.type];
         const sz = d?.size || 1;
+        
+        // Calculate sell refund (60% of build cost)
+        const refund = Math.floor((d?.cost || 0) * (scenario.economy.sellRefundRate || 0.6));
         
         for (let dy = 0; dy < sz; dy++) {
             for (let dx = 0; dx < sz; dx++) {
@@ -272,10 +286,19 @@
         }
         
         G.buildings = G.buildings.filter(b => !(b.x === tx && b.y === ty));
-        if (!G.debugMode) G.money -= demCost;
+        
+        // Add refund to money (instead of subtracting demolish cost)
+        if (!G.debugMode && refund > 0) {
+            G.money += refund;
+        }
+        
         PPT.ui.updateMoney();
-        PPT.game.spawnParticle(gx * TILE_SIZE + 16, gy * TILE_SIZE + 16, 'neg', G.debugMode ? 'FREE' : '-€' + demCost);
+        PPT.game.spawnParticle(gx * TILE_SIZE + 16, gy * TILE_SIZE + 16, 'coin', G.debugMode ? 'FREE' : '+€' + refund);
         PPT.audio.playSound('build');
+        
+        // Auto-save after selling
+        PPT.state.save();
+        
         return true;
     };
     
@@ -438,6 +461,9 @@
                 PPT.ui.updateMoney();
                 PPT.ui.updateGoals();
                 PPT.ui.buildBuildItems();
+                
+                // Auto-save after goal achievement
+                PPT.state.save();
             }
         }
     };
@@ -479,19 +505,27 @@
         const dp = PPT.render.getDayPart();
         const prevDp = PPT.config.getDayPeriod(G.tick - 1);
         
-        // Night transition - park closes
-        if (dp === 'night' && prevDp === 'evening') {
+        // Day period transition - deduct 1/4 of daily running costs
+        if (dp !== prevDp) {
             const c = PPT.game.countBuildings();
-            G.history.push({ day: G.day, money: G.money, guests: G.guests, happiness: G.happiness });
-            if (G.history.length > 30) G.history.shift();
+            const quarterRun = Math.ceil(c.run / 4);
             
-            if (!G.debugMode) G.money -= c.run;
-            G.guestSprites = [];
-            G.guests = 0;
+            if (quarterRun > 0 && !G.debugMode) {
+                G.money -= quarterRun;
+                PPT.game.spawnParticle(320, 192, 'neg', '-€' + quarterRun);
+                PPT.ui.updateMoney();
+            }
             
-            PPT.ui.showNotif(G.debugMode ? 'Night. Park closed. (Debug: no running costs)' : (c.run > 0 ? 'Night. Park closed. Running costs: -€' + c.run : 'Night. Park closed.'), 'info');
-            if (c.run > 0 && !G.debugMode) PPT.game.spawnParticle(320, 192, 'neg', '-€' + c.run);
-            PPT.ui.updateMoney();
+            // Night transition - park closes, reset guests, log history
+            if (dp === 'night' && prevDp === 'evening') {
+                G.history.push({ day: G.day, money: G.money, guests: G.guests, happiness: G.happiness });
+                if (G.history.length > 30) G.history.shift();
+                
+                G.guestSprites = [];
+                G.guests = 0;
+                
+                PPT.ui.showNotif(G.debugMode ? 'Night. Park closed. (Debug: no running costs)' : 'Night. Park closed.', 'info');
+            }
         }
         
         // Daytime - generate guests and income
@@ -543,6 +577,9 @@
             }
             
             if (G.day > 365) { G.day = 1; G.year++; }
+            
+            // Auto-save at end of each day
+            PPT.state.save();
         }
         
         // Update debug panel if open

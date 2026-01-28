@@ -11,16 +11,39 @@
     var gameLoopId = null;
     var tickInterval = null;
     var welcomePreviewId = null;
+    var wakeLock = null;
+    
+    // ==================== WAKE LOCK (prevent screen sleep) ====================
+    
+    async function requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', function() {
+                    wakeLock = null;
+                });
+            } catch (err) {
+                // Wake lock request failed (e.g., low battery)
+                console.log('Wake lock failed:', err);
+            }
+        }
+    }
+    
+    function releaseWakeLock() {
+        if (wakeLock !== null) {
+            wakeLock.release();
+            wakeLock = null;
+        }
+    }
+    
+    // Re-request wake lock when tab becomes visible again
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && gameLoopId !== null) {
+            requestWakeLock();
+        }
+    });
     
     // ==================== GLOBAL FUNCTIONS (for inline onclick) ====================
-    
-    window.toggleSFX = function() {
-        PPT.audio.toggleSFX();
-    };
-    
-    window.toggleMusic = function() {
-        PPT.audio.toggleMusic();
-    };
     
     window.switchTab = function(t) {
         PPT.ui.switchTab(t);
@@ -44,6 +67,137 @@
     
     window.toggleDebugPanel = function() {
         PPT.debug.togglePanel();
+    };
+    
+    // ==================== SETTINGS PANEL ====================
+    
+    window.showSettings = function() {
+        // Pause game when opening settings
+        if (!G.paused) {
+            G.wasPlayingBeforeSettings = true;
+            G.paused = true;
+            PPT.ui.updatePauseButton();
+        } else {
+            G.wasPlayingBeforeSettings = false;
+        }
+        
+        // Update toggle states
+        updateSettingsToggles();
+        
+        document.getElementById('settings-modal').classList.add('active');
+    };
+    
+    window.closeSettings = function() {
+        document.getElementById('settings-modal').classList.remove('active');
+        
+        // Resume if was playing before
+        if (G.wasPlayingBeforeSettings) {
+            G.paused = false;
+            PPT.ui.updatePauseButton();
+        }
+    };
+    
+    window.toggleMusicSetting = function() {
+        PPT.audio.toggleMusic();
+        updateSettingsToggles();
+    };
+    
+    window.toggleSFXSetting = function() {
+        PPT.audio.toggleSFX();
+        updateSettingsToggles();
+    };
+    
+    function updateSettingsToggles() {
+        var musicToggle = document.getElementById('music-toggle');
+        var sfxToggle = document.getElementById('sfx-toggle');
+        var musicStatus = document.getElementById('music-status');
+        var sfxStatus = document.getElementById('sfx-status');
+        
+        if (musicToggle && musicStatus) {
+            if (G.music) {
+                musicToggle.classList.add('active');
+                musicStatus.textContent = 'ON';
+            } else {
+                musicToggle.classList.remove('active');
+                musicStatus.textContent = 'OFF';
+            }
+        }
+        
+        if (sfxToggle && sfxStatus) {
+            if (G.sfx) {
+                sfxToggle.classList.add('active');
+                sfxStatus.textContent = 'ON';
+            } else {
+                sfxToggle.classList.remove('active');
+                sfxStatus.textContent = 'OFF';
+            }
+        }
+    }
+    
+    window.restartScenario = function() {
+        if (!PPT.currentScenario) return;
+        
+        var scenarioName = PPT.currentScenario.name || 'this scenario';
+        if (confirm('Restart ' + scenarioName + '?\n\nAll progress will be lost and you will start fresh.')) {
+            // Close settings
+            document.getElementById('settings-modal').classList.remove('active');
+            
+            // Delete save for current scenario
+            PPT.state.deleteSave(PPT.currentScenario.id);
+            
+            // Create fresh state
+            G = PPT.state.create(PPT.currentScenario);
+            
+            // Regenerate world
+            PPT.game.generateWorld();
+            
+            // Regenerate birds
+            PPT.game.initBirds();
+            
+            // Reset UI
+            PPT.ui.buildBuildItems();
+            PPT.ui.updateDisplay();
+            PPT.ui.updateMoney();
+            PPT.ui.updateGoals();
+            
+            // Save the fresh state
+            PPT.state.save();
+            
+            PPT.ui.showNotif('Game restarted! Good luck!', 'info');
+        }
+    };
+    
+    window.exitToMenu = function() {
+        if (confirm('Save and exit to menu?\n\nYour progress will be saved.')) {
+            // Save current state
+            PPT.state.save();
+            
+            // Close settings
+            document.getElementById('settings-modal').classList.remove('active');
+            
+            // Stop game loop and tick
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
+            if (tickInterval) {
+                clearInterval(tickInterval);
+                tickInterval = null;
+            }
+            
+            // Stop music
+            PPT.audio.stopMusic();
+            
+            // Release wake lock
+            releaseWakeLock();
+            
+            // Hide game, show scenario screen
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('scenario-screen').style.display = 'flex';
+            
+            // Re-init scenario grid to show updated save states
+            initScenarioGrid();
+        }
     };
     
     // ==================== SCREEN NAVIGATION ====================
@@ -1234,10 +1388,29 @@
     
     window.startGame = function() {
         PPT.currentScenario = PPT.scenarios[selectedScenario];
-        G = PPT.state.create(PPT.currentScenario);
+        
+        // Check for existing save
+        var saveData = PPT.state.load(selectedScenario);
+        
+        if (saveData) {
+            // Restore from save
+            G = PPT.state.restoreFromSave(PPT.currentScenario, saveData);
+            
+            // Regenerate visual elements (birds, etc.) that aren't saved
+            PPT.game.initBirds();
+            
+            // Regenerate guest sprites based on guest count
+            G.guestSprites = [];
+            for (var i = 0; i < Math.min(G.guests, 50); i++) {
+                PPT.game.spawnGuest();
+            }
+        } else {
+            // Create fresh state and generate world
+            G = PPT.state.create(PPT.currentScenario);
+            PPT.game.generateWorld();
+        }
         
         PPT.audio.init();
-        PPT.game.generateWorld();
         
         // Hide all menu screens
         document.getElementById('title-intro').style.display = 'none';
@@ -1310,26 +1483,9 @@
         });
         
         // Setup icon button hover effects
-        var sfxBtn = document.getElementById('sfx-btn');
-        var musicBtn = document.getElementById('music-btn');
         var pauseBtn = document.getElementById('pause-btn');
+        var settingsBtn = document.getElementById('settings-btn');
         
-        if (sfxBtn) {
-            sfxBtn.addEventListener('mouseenter', function() {
-                PPT.render.drawIcon(document.getElementById('sfx-icon')?.getContext('2d'), 'speaker', 16, true);
-            });
-            sfxBtn.addEventListener('mouseleave', function() {
-                PPT.render.drawIcon(document.getElementById('sfx-icon')?.getContext('2d'), 'speaker', 16, false);
-            });
-        }
-        if (musicBtn) {
-            musicBtn.addEventListener('mouseenter', function() {
-                PPT.render.drawIcon(document.getElementById('music-icon')?.getContext('2d'), 'music', 16, true);
-            });
-            musicBtn.addEventListener('mouseleave', function() {
-                PPT.render.drawIcon(document.getElementById('music-icon')?.getContext('2d'), 'music', 16, false);
-            });
-        }
         if (pauseBtn) {
             pauseBtn.addEventListener('mouseenter', function() {
                 PPT.render.drawIcon(document.getElementById('pause-icon')?.getContext('2d'), G.paused ? 'play' : 'pause', 16, true);
@@ -1338,6 +1494,25 @@
                 PPT.render.drawIcon(document.getElementById('pause-icon')?.getContext('2d'), G.paused ? 'play' : 'pause', 16, false);
             });
         }
+        
+        if (settingsBtn) {
+            settingsBtn.addEventListener('mouseenter', function() {
+                PPT.render.drawIcon(document.getElementById('settings-icon')?.getContext('2d'), 'gear', 16, true);
+            });
+            settingsBtn.addEventListener('mouseleave', function() {
+                PPT.render.drawIcon(document.getElementById('settings-icon')?.getContext('2d'), 'gear', 16, false);
+            });
+        }
+        
+        // Save on page close/hide
+        window.addEventListener('beforeunload', function() {
+            PPT.state.save();
+        });
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                PPT.state.save();
+            }
+        });
         
         // Setup mobile pan overlay
         setupPanOverlay();
@@ -1370,9 +1545,13 @@
         gameLoop();
         
         tickInterval = setInterval(PPT.game.tick, 700);
+        window._pptTickInterval = tickInterval;
         
         PPT.audio.startMusic();
         checkOrientation();
+        
+        // Request wake lock to prevent screen sleep
+        requestWakeLock();
     };
     
     // ==================== DEBUG MODE ====================

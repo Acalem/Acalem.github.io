@@ -166,6 +166,12 @@
         var BUILDINGS = scenario.buildings;
         var cats = { path: 'tab-paths', ride: 'tab-rides', coaster: 'tab-coasters', food: 'tab-food', decor: 'tab-decor' };
         
+        // Clear existing items first to prevent duplicates
+        Object.keys(cats).forEach(function(cat) {
+            var grid = document.querySelector('#' + cats[cat] + ' .build-items-grid');
+            if (grid) grid.innerHTML = '';
+        });
+        
         // Sort by cost like original
         var sorted = Object.keys(BUILDINGS).map(function(type) {
             return { type: type, data: BUILDINGS[type] };
@@ -300,11 +306,24 @@
                 var d = scenario.buildings[type];
                 if (!tt || !d) return;
                 
-                tt.querySelector('.tooltip-name').textContent = '';
-                tt.querySelector('.tooltip-cost').textContent = '';
-                tt.querySelector('.tooltip-running').textContent = '';
-                var descEl = tt.querySelector('.tooltip-desc');
                 var locked = !PPT.ui.isUnlocked(type);
+                var nameEl = tt.querySelector('.tooltip-name');
+                var costEl = tt.querySelector('.tooltip-cost');
+                var runEl = tt.querySelector('.tooltip-running');
+                var descEl = tt.querySelector('.tooltip-desc');
+                
+                // Show name and cost
+                nameEl.textContent = d.name;
+                costEl.textContent = locked ? '' : '€' + d.cost;
+                
+                // Show operating cost if it exists (> 0)
+                if (!locked && d.run && d.run > 0) {
+                    runEl.textContent = 'Operating: €' + d.run + '/day';
+                    runEl.style.display = 'block';
+                } else {
+                    runEl.textContent = '';
+                    runEl.style.display = 'none';
+                }
                 
                 if (locked) {
                     descEl.textContent = 'Unlock by completing the ' + d.unlock + ' challenge.';
@@ -330,6 +349,7 @@
                 var tt = document.getElementById('tooltip');
                 if (tt) {
                     tt.querySelector('.tooltip-desc').style.color = '#ccc';
+                    tt.querySelector('.tooltip-running').style.display = 'none';
                     tt.classList.remove('active');
                 }
             });
@@ -345,6 +365,7 @@
                 tt.querySelector('.tooltip-name').textContent = c.name;
                 tt.querySelector('.tooltip-cost').textContent = '';
                 tt.querySelector('.tooltip-running').textContent = '';
+                tt.querySelector('.tooltip-running').style.display = 'none';
                 tt.querySelector('.tooltip-desc').textContent = c.desc;
                 tt.classList.add('active');
             });
@@ -366,11 +387,15 @@
         if (demBtn) {
             demBtn.addEventListener('mouseenter', function() {
                 var tt = document.getElementById('tooltip');
+                var scenario = PPT.currentScenario;
+                var refundRate = scenario.economy.sellRefundRate || 0.6;
                 if (!tt) return;
-                tt.querySelector('.tooltip-name').textContent = '';
-                tt.querySelector('.tooltip-cost').textContent = '';
+                tt.querySelector('.tooltip-name').textContent = 'Sell Building';
+                tt.querySelector('.tooltip-cost').textContent = '+' + Math.round(refundRate * 100) + '% refund';
+                tt.querySelector('.tooltip-cost').style.color = '#4caf50';
                 tt.querySelector('.tooltip-running').textContent = '';
-                tt.querySelector('.tooltip-desc').textContent = 'Remove paths, buildings and decorations.';
+                tt.querySelector('.tooltip-running').style.display = 'none';
+                tt.querySelector('.tooltip-desc').textContent = 'Click on any building to sell it.';
                 tt.classList.add('active');
             });
             
@@ -383,6 +408,8 @@
             });
             
             demBtn.addEventListener('mouseleave', function() {
+                var tt = document.getElementById('tooltip');
+                tt.querySelector('.tooltip-cost').style.color = '#6bcb77';
                 document.getElementById('tooltip').classList.remove('active');
             });
         }
@@ -440,10 +467,15 @@
         // Logo
         drawIcon(document.getElementById('logo-icon')?.getContext('2d'), 'coaster', 20);
         
-        // Control buttons
-        drawIcon(document.getElementById('sfx-icon')?.getContext('2d'), 'speaker', 16);
-        drawIcon(document.getElementById('music-icon')?.getContext('2d'), 'music', 16);
+        // Control buttons (top bar)
         drawIcon(document.getElementById('pause-icon')?.getContext('2d'), 'pause', 16);
+        drawIcon(document.getElementById('settings-icon')?.getContext('2d'), 'gear', 16);
+        
+        // Settings modal icons
+        drawIcon(document.getElementById('music-label-icon')?.getContext('2d'), 'music', 16);
+        drawIcon(document.getElementById('sfx-label-icon')?.getContext('2d'), 'speaker', 16);
+        drawIcon(document.getElementById('restart-icon')?.getContext('2d'), 'reset', 16);
+        drawIcon(document.getElementById('exit-icon')?.getContext('2d'), 'exit', 16);
         
         // Tabs
         drawIcon(document.getElementById('tab-paths')?.getContext('2d'), 'path', 18);
@@ -454,7 +486,7 @@
         
         // Other
         drawIcon(document.getElementById('build-icon')?.getContext('2d'), 'hammer', 12);
-        drawIcon(document.getElementById('demolish-tool-icon')?.getContext('2d'), 'demolish', 16);
+        drawIcon(document.getElementById('demolish-tool-icon')?.getContext('2d'), 'sell', 16);
         drawIcon(document.getElementById('coin-icon')?.getContext('2d'), 'coin', 16);
         drawIcon(document.getElementById('guest-icon')?.getContext('2d'), 'guest', 16);
         drawIcon(document.getElementById('goals-icon')?.getContext('2d'), 'target', 16);
@@ -462,6 +494,11 @@
         
         PPT.ui.updateTimeIcon();
         PPT.ui.updateHappyIcon();
+    };
+    
+    PPT.ui.updatePauseButton = function() {
+        var icon = G.paused ? 'play' : 'pause';
+        PPT.render.drawIcon(document.getElementById('pause-icon')?.getContext('2d'), icon, 16);
     };
     
 })();

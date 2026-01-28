@@ -6,6 +6,10 @@
 (function() {
     'use strict';
     
+    // Game speed multiplier (1x, 2x, 4x, 8x)
+    var speedMultiplier = 1;
+    var speedOptions = [1, 2, 4, 8];
+    
     PPT.debug.togglePanel = function() {
         var panel = document.getElementById('debug-panel');
         if (!panel) return;
@@ -13,6 +17,32 @@
         if (panel.classList.contains('active')) {
             PPT.debug.updatePanel();
         }
+    };
+    
+    PPT.debug.cycleSpeed = function() {
+        var idx = speedOptions.indexOf(speedMultiplier);
+        idx = (idx + 1) % speedOptions.length;
+        speedMultiplier = speedOptions[idx];
+        
+        // Update tick interval
+        PPT.debug.applySpeed();
+        PPT.debug.updatePanel();
+    };
+    
+    PPT.debug.applySpeed = function() {
+        // Base tick rate is 700ms, divide by speed multiplier
+        var baseRate = 700;
+        var newRate = Math.floor(baseRate / speedMultiplier);
+        
+        // Clear existing interval and set new one
+        if (window._pptTickInterval) {
+            clearInterval(window._pptTickInterval);
+        }
+        window._pptTickInterval = setInterval(PPT.game.tick, newRate);
+    };
+    
+    PPT.debug.getSpeed = function() {
+        return speedMultiplier;
     };
     
     PPT.debug.updatePanel = function() {
@@ -32,6 +62,12 @@
         var guestGen = PPT.game.calcGuestGen();
         
         var html = '<button class="debug-close" onclick="PPT.debug.togglePanel()">×</button>';
+        
+        // Speed control
+        html += '<div class="debug-speed-control">';
+        html += '<span class="debug-speed-label">Game Speed:</span>';
+        html += '<button class="debug-speed-btn" onclick="PPT.debug.cycleSpeed()">' + speedMultiplier + 'x</button>';
+        html += '</div>';
         
         // Current State
         html += '<h3>Current State</h3><div class="debug-grid">';

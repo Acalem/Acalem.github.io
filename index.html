@@ -59,7 +59,7 @@
                 <p class="credits-sub">with a little help from <span class="credits-claude">Claude</span></p>
             </div>
             <div class="credits-divider"></div>
-            <p class="credits-year">© 2025</p>
+            <p class="credits-year">© 2026</p>
             <button class="menu-btn" onclick="closeCredits()">BACK</button>
         </div>
     </div>
@@ -78,6 +78,48 @@
         </div>
     </div>
     
+    <!-- Settings Modal -->
+    <div id="settings-modal">
+        <div class="settings-content">
+            <h2>Settings</h2>
+            <div class="settings-group">
+                <div class="settings-row">
+                    <div class="settings-label-group">
+                        <canvas id="music-label-icon" width="16" height="16"></canvas>
+                        <span class="settings-label">Music</span>
+                    </div>
+                    <button class="settings-toggle" id="music-toggle" onclick="toggleMusicSetting()">
+                        <span class="toggle-text" id="music-status">ON</span>
+                    </button>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-label-group">
+                        <canvas id="sfx-label-icon" width="16" height="16"></canvas>
+                        <span class="settings-label">Sound Effects</span>
+                    </div>
+                    <button class="settings-toggle" id="sfx-toggle" onclick="toggleSFXSetting()">
+                        <span class="toggle-text" id="sfx-status">ON</span>
+                    </button>
+                </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-group">
+                <button class="settings-action-btn" onclick="restartScenario()">
+                    <canvas id="restart-icon" width="16" height="16"></canvas>
+                    <span>Restart Scenario</span>
+                </button>
+                <button class="settings-action-btn settings-exit-btn" onclick="exitToMenu()">
+                    <canvas id="exit-icon" width="16" height="16"></canvas>
+                    <span>Save &amp; Exit to Menu</span>
+                </button>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-close-row">
+                <button class="menu-btn" onclick="closeSettings()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Landscape Warning -->
     <div id="landscape-warning">
         <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="#ffd93d" stroke-width="2">
@@ -93,10 +135,9 @@
         <div id="top-bar">
             <div class="logo"><canvas id="logo-icon" width="20" height="20" style="image-rendering:pixelated;"></canvas><span class="logo-text">PIXEL PARK TYCOON</span></div>
             <div class="top-controls">
-                <button class="icon-btn" onclick="showHelp()" title="Help">?</button>
-                <button class="icon-btn" id="sfx-btn" onclick="toggleSFX()" title="SFX"><canvas id="sfx-icon" width="16" height="16"></canvas></button>
-                <button class="icon-btn" id="music-btn" onclick="toggleMusic()" title="Music"><canvas id="music-icon" width="16" height="16"></canvas></button>
                 <button class="icon-btn" id="pause-btn" onclick="togglePause()" title="Pause"><canvas id="pause-icon" width="16" height="16"></canvas></button>
+                <button class="icon-btn" onclick="showHelp()" title="Help">?</button>
+                <button class="icon-btn" id="settings-btn" onclick="showSettings()" title="Settings"><canvas id="settings-icon" width="16" height="16"></canvas></button>
                 <button id="debug-btn" onclick="toggleDebugPanel()">DEBUG</button>
             </div>
         </div>
@@ -149,8 +190,8 @@
                 <div class="sidebar-section demolish-section">
                     <button class="demolish-btn" id="demolish-btn" onclick="selectDemolish()">
                         <canvas class="item-icon" id="demolish-tool-icon" width="16" height="16"></canvas>
-                        <span class="item-name">Demolish</span>
-                        <span class="item-cost">€50</span>
+                        <span class="item-name">Sell</span>
+                        <span class="item-cost sell-refund">+60%</span>
                     </button>
                 </div>
             </div>

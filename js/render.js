@@ -400,6 +400,27 @@
                 ctx.beginPath(); ctx.moveTo(6*s, 6*s); ctx.lineTo(18*s, 18*s); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(18*s, 6*s); ctx.lineTo(6*s, 18*s); ctx.stroke();
                 break;
+            case 'sell':
+                // Coin with arrow pointing up (selling/profit)
+                ctx.fillStyle = C.yellow;
+                ctx.beginPath(); ctx.arc(12*s, 14*s, 7*s, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = C.orange;
+                ctx.beginPath(); ctx.arc(12*s, 14*s, 5*s, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(10*s, 11*s, 4*s, 6*s);
+                // Green arrow pointing up
+                ctx.fillStyle = C.green;
+                ctx.beginPath();
+                ctx.moveTo(12*s, 2*s);
+                ctx.lineTo(18*s, 8*s);
+                ctx.lineTo(14*s, 8*s);
+                ctx.lineTo(14*s, 10*s);
+                ctx.lineTo(10*s, 10*s);
+                ctx.lineTo(10*s, 8*s);
+                ctx.lineTo(6*s, 8*s);
+                ctx.closePath();
+                ctx.fill();
+                break;
             case 'trophy':
                 ctx.fillStyle = C.yellow;
                 ctx.fillRect(8*s, 4*s, 8*s, 10*s); ctx.fillRect(4*s, 4*s, 6*s, 6*s); ctx.fillRect(14*s, 4*s, 6*s, 6*s);
@@ -445,6 +466,71 @@
             case 'moon':
                 ctx.fillStyle = '#fffde7'; ctx.beginPath(); ctx.arc(12*s, 12*s, 7*s, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#1a1a3a'; ctx.beginPath(); ctx.arc(16*s, 10*s, 5*s, 0, Math.PI*2); ctx.fill();
+                break;
+            case 'reset':
+                // Circular arrow (refresh/reset icon)
+                const resetColor = sz === 16 && hover ? '#1a1a2e' : C.yellow;
+                ctx.strokeStyle = resetColor;
+                ctx.lineWidth = 2.5*s;
+                ctx.lineCap = 'round';
+                // Draw circular arc
+                ctx.beginPath();
+                ctx.arc(12*s, 12*s, 7*s, -0.5, Math.PI * 1.5);
+                ctx.stroke();
+                // Draw arrow head
+                ctx.fillStyle = resetColor;
+                ctx.beginPath();
+                ctx.moveTo(5*s, 8*s);
+                ctx.lineTo(5*s, 14*s);
+                ctx.lineTo(11*s, 11*s);
+                ctx.closePath();
+                ctx.fill();
+                break;
+            case 'gear':
+                // Gear/settings icon
+                const gearColor = sz === 16 && hover ? '#1a1a2e' : C.yellow;
+                ctx.fillStyle = gearColor;
+                // Center circle
+                ctx.beginPath();
+                ctx.arc(12*s, 12*s, 4*s, 0, Math.PI * 2);
+                ctx.fill();
+                // Gear teeth (6 teeth)
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * Math.PI / 3) - Math.PI / 6;
+                    const x1 = 12*s + Math.cos(angle) * 6*s;
+                    const y1 = 12*s + Math.sin(angle) * 6*s;
+                    ctx.beginPath();
+                    ctx.arc(x1, y1, 3*s, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Inner hole
+                ctx.fillStyle = sz === 16 && hover ? C.yellow : '#1a1a2e';
+                ctx.beginPath();
+                ctx.arc(12*s, 12*s, 2*s, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'exit':
+                // Exit/door icon
+                ctx.fillStyle = C.yellow;
+                // Door frame
+                ctx.fillRect(4*s, 4*s, 10*s, 16*s);
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(6*s, 6*s, 6*s, 12*s);
+                // Arrow pointing out
+                ctx.fillStyle = C.yellow;
+                ctx.beginPath();
+                ctx.moveTo(14*s, 12*s);
+                ctx.lineTo(20*s, 12*s);
+                ctx.lineTo(17*s, 8*s);
+                ctx.moveTo(20*s, 12*s);
+                ctx.lineTo(17*s, 16*s);
+                ctx.lineWidth = 2*s;
+                ctx.strokeStyle = C.yellow;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(14*s, 12*s);
+                ctx.lineTo(20*s, 12*s);
+                ctx.stroke();
                 break;
         }
     };
@@ -551,16 +637,16 @@
         drawTiles(x, y);
     }
     
-    // Rides and attractions
-    function drawMerryGoRound(x, y) { const f = G.paused ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = C.pink; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 16, y * TILE_SIZE + 4); parkCtx.lineTo(x * TILE_SIZE + 30, y * TILE_SIZE + 14); parkCtx.lineTo(x * TILE_SIZE + 2, y * TILE_SIZE + 14); parkCtx.fill(); parkCtx.fillStyle = C.yellow; parkCtx.fillRect(x * TILE_SIZE + 12, y * TILE_SIZE + 10, 8, 16); const cols = [C.red, C.dblue, C.green, C.purple], angs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5]; for (let i = 0; i < 4; i++) { const a = angs[i] + f * 0.03, hx = x * TILE_SIZE + 16 + Math.cos(a) * 10, hy = y * TILE_SIZE + 20 + Math.sin(a) * 4; parkCtx.fillStyle = cols[i]; parkCtx.beginPath(); parkCtx.roundRect(hx - 3, hy - 2, 6, 8, 2); parkCtx.fill(); } }
-    function drawFerrisWheel(x, y) { const f = G.paused ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = C.pink; parkCtx.fillRect(x * TILE_SIZE + 6, y * TILE_SIZE + 22, 4, 10); parkCtx.fillRect(x * TILE_SIZE + 22, y * TILE_SIZE + 22, 4, 10); parkCtx.strokeStyle = C.pink; parkCtx.lineWidth = 3; parkCtx.beginPath(); parkCtx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 14, 12, 0, Math.PI * 2); parkCtx.stroke(); const cols = [C.red, C.dblue, C.yellow, C.green, C.purple, C.orange]; for (let i = 0; i < 6; i++) { const a = (f * 0.02 + i / 6) * Math.PI * 2, gx = x * TILE_SIZE + 16 + Math.cos(a) * 12, gy = y * TILE_SIZE + 14 + Math.sin(a) * 12; parkCtx.strokeStyle = C.pink; parkCtx.lineWidth = 1; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 16, y * TILE_SIZE + 14); parkCtx.lineTo(gx, gy); parkCtx.stroke(); const sw = Math.sin(f * 0.03 + i); parkCtx.fillStyle = cols[i]; parkCtx.beginPath(); parkCtx.roundRect(gx - 4 + sw, gy, 8, 6, 2); parkCtx.fill(); } parkCtx.fillStyle = C.yellow; parkCtx.beginPath(); parkCtx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 14, 4, 0, Math.PI * 2); parkCtx.fill(); }
+    // Rides and attractions (animations stop at night)
+    function drawMerryGoRound(x, y) { const night = getDayPart() === 'night'; const f = (G.paused || night) ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = C.pink; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 16, y * TILE_SIZE + 4); parkCtx.lineTo(x * TILE_SIZE + 30, y * TILE_SIZE + 14); parkCtx.lineTo(x * TILE_SIZE + 2, y * TILE_SIZE + 14); parkCtx.fill(); parkCtx.fillStyle = C.yellow; parkCtx.fillRect(x * TILE_SIZE + 12, y * TILE_SIZE + 10, 8, 16); const cols = [C.red, C.dblue, C.green, C.purple], angs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5]; for (let i = 0; i < 4; i++) { const a = angs[i] + f * 0.03, hx = x * TILE_SIZE + 16 + Math.cos(a) * 10, hy = y * TILE_SIZE + 20 + Math.sin(a) * 4; parkCtx.fillStyle = cols[i]; parkCtx.beginPath(); parkCtx.roundRect(hx - 3, hy - 2, 6, 8, 2); parkCtx.fill(); } }
+    function drawFerrisWheel(x, y) { const night = getDayPart() === 'night'; const f = (G.paused || night) ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = C.pink; parkCtx.fillRect(x * TILE_SIZE + 6, y * TILE_SIZE + 22, 4, 10); parkCtx.fillRect(x * TILE_SIZE + 22, y * TILE_SIZE + 22, 4, 10); parkCtx.strokeStyle = C.pink; parkCtx.lineWidth = 3; parkCtx.beginPath(); parkCtx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 14, 12, 0, Math.PI * 2); parkCtx.stroke(); const cols = [C.red, C.dblue, C.yellow, C.green, C.purple, C.orange]; for (let i = 0; i < 6; i++) { const a = (f * 0.02 + i / 6) * Math.PI * 2, gx = x * TILE_SIZE + 16 + Math.cos(a) * 12, gy = y * TILE_SIZE + 14 + Math.sin(a) * 12; parkCtx.strokeStyle = C.pink; parkCtx.lineWidth = 1; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 16, y * TILE_SIZE + 14); parkCtx.lineTo(gx, gy); parkCtx.stroke(); const sw = night ? 0 : Math.sin(f * 0.03 + i); parkCtx.fillStyle = cols[i]; parkCtx.beginPath(); parkCtx.roundRect(gx - 4 + sw, gy, 8, 6, 2); parkCtx.fill(); } parkCtx.fillStyle = C.yellow; parkCtx.beginPath(); parkCtx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 14, 4, 0, Math.PI * 2); parkCtx.fill(); }
     function drawSpiralSlide(x, y) { const f = G.paused ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = '#666'; parkCtx.fillRect(x * TILE_SIZE + 6, y * TILE_SIZE + 4, 3, 26); parkCtx.fillRect(x * TILE_SIZE + 23, y * TILE_SIZE + 4, 3, 26); parkCtx.fillStyle = '#555'; parkCtx.fillRect(x * TILE_SIZE + 9, y * TILE_SIZE + 8, 14, 2); parkCtx.fillRect(x * TILE_SIZE + 9, y * TILE_SIZE + 16, 14, 2); parkCtx.fillStyle = C.red; parkCtx.fillRect(x * TILE_SIZE + 5, y * TILE_SIZE + 2, 22, 4); parkCtx.fillStyle = C.yellow; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 16, y * TILE_SIZE); parkCtx.lineTo(x * TILE_SIZE + 26, y * TILE_SIZE + 2); parkCtx.lineTo(x * TILE_SIZE + 6, y * TILE_SIZE + 2); parkCtx.fill(); parkCtx.strokeStyle = C.pink; parkCtx.lineWidth = 4; parkCtx.lineCap = 'round'; parkCtx.beginPath(); for (let i = 0; i <= 25; i++) { const t = i / 25, sy = (6 + t * 22), a = t * Math.PI * 5, r = 3 + t * 6, sx = 16 + Math.cos(a) * r; if (i === 0) parkCtx.moveTo(x * TILE_SIZE + sx, y * TILE_SIZE + sy); else parkCtx.lineTo(x * TILE_SIZE + sx, y * TILE_SIZE + sy); } parkCtx.stroke(); parkCtx.strokeStyle = '#ffb0c8'; parkCtx.lineWidth = 2; parkCtx.beginPath(); for (let i = 0; i <= 25; i++) { const t = i / 25, sy = (6 + t * 22), a = t * Math.PI * 5, r = 2 + t * 5, sx = 16 + Math.cos(a) * r; if (i === 0) parkCtx.moveTo(x * TILE_SIZE + sx, y * TILE_SIZE + sy); else parkCtx.lineTo(x * TILE_SIZE + sx, y * TILE_SIZE + sy); } parkCtx.stroke(); parkCtx.fillStyle = C.pink; parkCtx.beginPath(); parkCtx.roundRect(x * TILE_SIZE + 20, y * TILE_SIZE + 26, 10, 4, 2); parkCtx.fill(); }
     function drawHauntedHouse(x, y) { drawGrass(x, y); parkCtx.fillStyle = C.haunted; parkCtx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 10, 24, 20); parkCtx.fillStyle = C.hauntedDark; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 4, y * TILE_SIZE + 10); parkCtx.lineTo(x * TILE_SIZE + 16, y * TILE_SIZE + 2); parkCtx.lineTo(x * TILE_SIZE + 28, y * TILE_SIZE + 10); parkCtx.fill(); parkCtx.fillStyle = C.yellow; parkCtx.fillRect(x * TILE_SIZE + 8, y * TILE_SIZE + 14, 4, 4); parkCtx.fillRect(x * TILE_SIZE + 20, y * TILE_SIZE + 14, 4, 4); parkCtx.fillStyle = '#3a2a4a'; parkCtx.fillRect(x * TILE_SIZE + 13, y * TILE_SIZE + 22, 6, 8); parkCtx.fillStyle = C.orange; parkCtx.beginPath(); parkCtx.arc(x * TILE_SIZE + 16, y * TILE_SIZE + 6, 3, 0, Math.PI * 2); parkCtx.fill(); }
-    function drawPirateShip(x, y) { const f = G.paused ? 0 : G.frame; drawGrass(x, y); const swing = Math.sin(f * 0.04) * 0.3; parkCtx.save(); parkCtx.translate(x * TILE_SIZE + 16, y * TILE_SIZE + 8); parkCtx.rotate(swing); parkCtx.fillStyle = '#8b4513'; parkCtx.fillRect(-12, 0, 24, 10); parkCtx.fillStyle = '#654321'; parkCtx.fillRect(-2, -12, 4, 14); parkCtx.fillStyle = '#222'; parkCtx.beginPath(); parkCtx.moveTo(2, -12); parkCtx.lineTo(12, -4); parkCtx.lineTo(2, -4); parkCtx.fill(); parkCtx.fillStyle = '#a0522d'; parkCtx.beginPath(); parkCtx.moveTo(-12, 10); parkCtx.quadraticCurveTo(-14, 16, -8, 14); parkCtx.lineTo(8, 14); parkCtx.quadraticCurveTo(14, 16, 12, 10); parkCtx.closePath(); parkCtx.fill(); parkCtx.restore(); parkCtx.fillStyle = '#666'; parkCtx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 26, 8, 4); parkCtx.fillRect(x * TILE_SIZE + 20, y * TILE_SIZE + 26, 8, 4); }
-    function drawObservationTower(x, y) { const f = G.paused ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = '#666'; parkCtx.fillRect(x * TILE_SIZE + 12, y * TILE_SIZE + 8, 8, 22); parkCtx.fillStyle = '#888'; for (let i = 0; i < 5; i++) parkCtx.fillRect(x * TILE_SIZE + 10, y * TILE_SIZE + 10 + i * 4, 12, 2); const cabY = y * TILE_SIZE + 6 + Math.sin(f * 0.02) * 4; parkCtx.fillStyle = '#444'; parkCtx.beginPath(); parkCtx.roundRect(x * TILE_SIZE + 6, cabY, 20, 10, 3); parkCtx.fill(); parkCtx.fillStyle = C.blue; parkCtx.fillRect(x * TILE_SIZE + 8, cabY + 2, 6, 5); parkCtx.fillRect(x * TILE_SIZE + 18, cabY + 2, 6, 5); parkCtx.fillStyle = C.red; parkCtx.fillRect(x * TILE_SIZE + 10, y * TILE_SIZE + 2, 12, 5); }
+    function drawPirateShip(x, y) { const night = getDayPart() === 'night'; const f = (G.paused || night) ? 0 : G.frame; drawGrass(x, y); const swing = Math.sin(f * 0.04) * 0.3; parkCtx.save(); parkCtx.translate(x * TILE_SIZE + 16, y * TILE_SIZE + 8); parkCtx.rotate(swing); parkCtx.fillStyle = '#8b4513'; parkCtx.fillRect(-12, 0, 24, 10); parkCtx.fillStyle = '#654321'; parkCtx.fillRect(-2, -12, 4, 14); parkCtx.fillStyle = '#222'; parkCtx.beginPath(); parkCtx.moveTo(2, -12); parkCtx.lineTo(12, -4); parkCtx.lineTo(2, -4); parkCtx.fill(); parkCtx.fillStyle = '#a0522d'; parkCtx.beginPath(); parkCtx.moveTo(-12, 10); parkCtx.quadraticCurveTo(-14, 16, -8, 14); parkCtx.lineTo(8, 14); parkCtx.quadraticCurveTo(14, 16, 12, 10); parkCtx.closePath(); parkCtx.fill(); parkCtx.restore(); parkCtx.fillStyle = '#666'; parkCtx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 26, 8, 4); parkCtx.fillRect(x * TILE_SIZE + 20, y * TILE_SIZE + 26, 8, 4); }
+    function drawObservationTower(x, y) { const night = getDayPart() === 'night'; const f = (G.paused || night) ? 0 : G.frame; drawGrass(x, y); parkCtx.fillStyle = '#666'; parkCtx.fillRect(x * TILE_SIZE + 12, y * TILE_SIZE + 8, 8, 22); parkCtx.fillStyle = '#888'; for (let i = 0; i < 5; i++) parkCtx.fillRect(x * TILE_SIZE + 10, y * TILE_SIZE + 10 + i * 4, 12, 2); const cabY = y * TILE_SIZE + 6 + (night ? 0 : Math.sin(f * 0.02) * 4); parkCtx.fillStyle = '#444'; parkCtx.beginPath(); parkCtx.roundRect(x * TILE_SIZE + 6, cabY, 20, 10, 3); parkCtx.fill(); parkCtx.fillStyle = C.blue; parkCtx.fillRect(x * TILE_SIZE + 8, cabY + 2, 6, 5); parkCtx.fillRect(x * TILE_SIZE + 18, cabY + 2, 6, 5); parkCtx.fillStyle = C.red; parkCtx.fillRect(x * TILE_SIZE + 10, y * TILE_SIZE + 2, 12, 5); }
     
-    // Coasters
-    function drawCoaster(x, y, type) { drawGrass(x, y); drawGrass(x + 1, y); const cl = { 'wild-mouse': '#ff69b4', 'junior-coaster': '#4ecdc4', 'steel-coaster': C.purple, 'wooden-coaster': '#d9b87c', 'hyper-coaster': C.orange, 'giga-coaster': '#00ced1' }[type] || C.purple; parkCtx.fillStyle = cl; parkCtx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 24, 4, 8); parkCtx.fillRect(x * TILE_SIZE + 56, y * TILE_SIZE + 16, 4, 16); parkCtx.strokeStyle = cl; parkCtx.lineWidth = 4; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 6, y * TILE_SIZE + 24); parkCtx.quadraticCurveTo(x * TILE_SIZE + 16, y * TILE_SIZE + 4, x * TILE_SIZE + 32, y * TILE_SIZE + 8); parkCtx.quadraticCurveTo(x * TILE_SIZE + 48, y * TILE_SIZE + 12, x * TILE_SIZE + 58, y * TILE_SIZE + 16); parkCtx.stroke(); const f = G.paused ? 0 : G.frame, t = (f % 120) / 120, cx = x * TILE_SIZE + 6 + t * 52, cy = y * TILE_SIZE + 24 - Math.sin(t * Math.PI) * 16; parkCtx.fillStyle = C.red; parkCtx.beginPath(); parkCtx.roundRect(cx - 6, cy - 4, 12, 8, 3); parkCtx.fill(); parkCtx.fillStyle = '#ffd5b8'; parkCtx.beginPath(); parkCtx.arc(cx - 2, cy - 6, 3, 0, Math.PI * 2); parkCtx.fill(); parkCtx.beginPath(); parkCtx.arc(cx + 2, cy - 6, 3, 0, Math.PI * 2); parkCtx.fill(); }
+    // Coasters (animations stop at night)
+    function drawCoaster(x, y, type) { const night = getDayPart() === 'night'; drawGrass(x, y); drawGrass(x + 1, y); const cl = { 'wild-mouse': '#ff69b4', 'junior-coaster': '#4ecdc4', 'steel-coaster': C.purple, 'wooden-coaster': '#d9b87c', 'hyper-coaster': C.orange, 'giga-coaster': '#00ced1' }[type] || C.purple; parkCtx.fillStyle = cl; parkCtx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 24, 4, 8); parkCtx.fillRect(x * TILE_SIZE + 56, y * TILE_SIZE + 16, 4, 16); parkCtx.strokeStyle = cl; parkCtx.lineWidth = 4; parkCtx.beginPath(); parkCtx.moveTo(x * TILE_SIZE + 6, y * TILE_SIZE + 24); parkCtx.quadraticCurveTo(x * TILE_SIZE + 16, y * TILE_SIZE + 4, x * TILE_SIZE + 32, y * TILE_SIZE + 8); parkCtx.quadraticCurveTo(x * TILE_SIZE + 48, y * TILE_SIZE + 12, x * TILE_SIZE + 58, y * TILE_SIZE + 16); parkCtx.stroke(); const f = (G.paused || night) ? 0 : G.frame, t = (f % 120) / 120, cx = x * TILE_SIZE + 6 + t * 52, cy = y * TILE_SIZE + 24 - Math.sin(t * Math.PI) * 16; parkCtx.fillStyle = C.red; parkCtx.beginPath(); parkCtx.roundRect(cx - 6, cy - 4, 12, 8, 3); parkCtx.fill(); parkCtx.fillStyle = '#ffd5b8'; parkCtx.beginPath(); parkCtx.arc(cx - 2, cy - 6, 3, 0, Math.PI * 2); parkCtx.fill(); parkCtx.beginPath(); parkCtx.arc(cx + 2, cy - 6, 3, 0, Math.PI * 2); parkCtx.fill(); }
     
     // Food stalls
     function drawFoodStall(x, y, type) {
