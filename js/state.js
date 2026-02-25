@@ -1,5 +1,5 @@
 /**
- * Pixel Park Tycoon - State Management
+ * Pixel Park Paradise - State Management
  * Game state object and state initialization
  */
 
@@ -61,8 +61,32 @@
                 // Gameplay
                 boosts: [],
                 goalsAchieved: scenario.goals.map(() => false),
-                daysSinceLastBuild: 0,
-                staleNotified: false,
+                entryFee: 0,
+                
+                // Staff system
+                staff: [],
+                staffSprites: [],
+                cleanliness: 100,
+                rideBreakdowns: [],
+                
+                // Guest types
+                guestTypeCounts: { thrillSeeker: 0, foodie: 0, family: 0, vip: 0 },
+                inspectedGuest: null,
+                carriedGuest: null,
+                
+                // Events system
+                activeEffects: [],
+                lastEvents: [],
+                rain: [],
+                
+                // Finance tracking
+                todayFinances: { entryFees: 0, foodRevenue: 0, runningCosts: 0, staffSalaries: 0, construction: 0, events: 0, rewards: 0 },
+                financeHistory: [],
+                
+                // Price elasticity (computed each tick, not saved)
+                fairPrice: 0,
+                priceMod: 1,
+                crowdFactor: 1,
                 
                 // Tips/notifications
                 lastTip: {},
@@ -75,7 +99,8 @@
                 history: [],
                 
                 // Help modal state
-                wasPlayingBeforeHelp: false
+                wasPlayingBeforeHelp: false,
+                wasPlayingBeforeRoadmap: false
             };
         },
         
@@ -145,8 +170,23 @@
                     // Gameplay progress
                     boosts: PPT._gameState.boosts,
                     goalsAchieved: PPT._gameState.goalsAchieved,
-                    daysSinceLastBuild: PPT._gameState.daysSinceLastBuild,
-                    staleNotified: PPT._gameState.staleNotified,
+                    entryFee: PPT._gameState.entryFee,
+                    
+                    // Staff system
+                    staff: PPT._gameState.staff,
+                    cleanliness: PPT._gameState.cleanliness,
+                    rideBreakdowns: PPT._gameState.rideBreakdowns,
+                    
+                    // Guest types
+                    guestTypeCounts: PPT._gameState.guestTypeCounts,
+                    
+                    // Events
+                    activeEffects: PPT._gameState.activeEffects,
+                    lastEvents: PPT._gameState.lastEvents,
+                    
+                    // Finance tracking
+                    todayFinances: PPT._gameState.todayFinances,
+                    financeHistory: PPT._gameState.financeHistory,
                     
                     // History for debug panel
                     history: PPT._gameState.history
@@ -243,10 +283,36 @@
             state.buildings = saveData.buildings;
             state.worldSeed = saveData.worldSeed;
             
+            // Ensure new behavior system fields on buildings (backward compat)
+            if (state.buildings) {
+                state.buildings.forEach(function(b) {
+                    if (b.builtTick == null && !b.building) b.builtTick = 0;
+                    if (b.current_visitors == null) b.current_visitors = 0;
+                    if (b.sales_today == null) b.sales_today = 0;
+                    if (b.revenue_today == null) b.revenue_today = 0;
+                });
+            }
+            
             state.boosts = saveData.boosts || [];
-            state.goalsAchieved = saveData.goalsAchieved || scenario.goals.map(() => false);
-            state.daysSinceLastBuild = saveData.daysSinceLastBuild || 0;
-            state.staleNotified = saveData.staleNotified || false;
+            var savedGoals = saveData.goalsAchieved || [];
+            state.goalsAchieved = scenario.goals.map(function(_, i) { return savedGoals[i] || false; });
+            state.entryFee = saveData.entryFee ?? 0;
+            
+            // Staff system
+            state.staff = saveData.staff || [];
+            state.cleanliness = saveData.cleanliness ?? 100;
+            state.rideBreakdowns = saveData.rideBreakdowns || [];
+            
+            // Guest types
+            state.guestTypeCounts = saveData.guestTypeCounts || { thrillSeeker: 0, foodie: 0, family: 0, vip: 0 };
+            
+            // Events
+            state.activeEffects = saveData.activeEffects || [];
+            state.lastEvents = saveData.lastEvents || [];
+            
+            // Finance tracking
+            state.todayFinances = saveData.todayFinances || { entryFees: 0, foodRevenue: 0, runningCosts: 0, staffSalaries: 0, construction: 0, events: 0, rewards: 0 };
+            state.financeHistory = saveData.financeHistory || [];
             
             state.history = saveData.history || [];
             

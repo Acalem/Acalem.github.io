@@ -1,5 +1,5 @@
 /**
- * Pixel Park Tycoon - Audio System
+ * Pixel Park Paradise - Audio System
  * Sound effects and procedural ambient music
  */
 

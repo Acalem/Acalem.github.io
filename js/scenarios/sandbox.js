@@ -18,7 +18,22 @@
         startDay: 1,
         
         // No goals in sandbox - just build!
-        goals: [],
+        goals: [
+            { name: 'Tiny Park',       icon: 'goal-tiny',    reward: 0, desc: 'Get 20 guests using 10 or fewer tiles',
+              conditions: [{ type: 'guests', min: 20 }, { type: 'maxTiles', max: 10 }] },
+            { name: 'Coaster Fanatic', icon: 'goal-coaster', reward: 0, desc: 'Build one of every coaster',
+              conditions: [{ type: 'buildingsExact', types: ['wild-mouse','junior-coaster','steel-coaster','wooden-coaster','hyper-coaster','giga-coaster'] }] },
+            { name: 'Food Court',      icon: 'goal-foodie',  reward: 0, desc: 'Build one of every food stall',
+              conditions: [{ type: 'buildingsExact', types: ['cotton-candy','coffee-stand','ice-cream','soft-drinks','waffles','burger-joint'] }] },
+            { name: 'Garden Paradise',  icon: 'goal-garden',  reward: 0, desc: 'Place 30 decorations',
+              conditions: [{ type: 'buildings', cat: 'decor', min: 30 }] },
+            { name: 'Full House',       icon: 'goal-crowd',   reward: 0, desc: '500 guests at once',
+              conditions: [{ type: 'guests', min: 500 }] },
+            { name: 'Bliss',            icon: 'goal-happy',   reward: 0, desc: 'Reach 100 happiness',
+              conditions: [{ type: 'happiness', min: 100 }] },
+            { name: 'Perfectionist',    icon: 'goal-globe',   reward: 0, desc: 'Fill every buildable tile',
+              conditions: [{ type: 'allTilesFilled' }] }
+        ],
         
         // World generation settings
         worldGen: {
@@ -30,12 +45,16 @@
         // All buildings available immediately (no unlock requirements)
         buildings: {
             // Paths
-            'tiles':        { cost: 25,    run: 0,    cat: 'path',    name: 'Tiles' },
-            'sand-path':    { cost: 30,    run: 0,    cat: 'path',    name: 'Sand' },
-            'gravel-path':  { cost: 35,    run: 0,    cat: 'path',    name: 'Gravel' },
-            'path':         { cost: 40,    run: 0,    cat: 'path',    name: 'Cobblestone' },
-            'asphalt':      { cost: 50,    run: 0,    cat: 'path',    name: 'Asphalt' },
-            'wooden-path':  { cost: 60,    run: 0,    cat: 'path',    name: 'Wooden' },
+            'dirt-trail':    { cost: 15,    run: 0,   cat: 'path',    name: 'Dirt Trail' },
+            'gravel-trail':  { cost: 20,    run: 0,   cat: 'path',    name: 'Gravel Trail' },
+            'dirt-lane':     { cost: 30,    run: 0,   cat: 'path',    name: 'Country Lane' },
+            'gravel-walk':   { cost: 35,    run: 0,   cat: 'path',    name: 'Garden Walk' },
+            'stone-paving':  { cost: 45,    run: 0,   cat: 'path',    name: 'Stone Paving' },
+            'tarmac':        { cost: 50,    run: 0,   cat: 'path',    name: 'Tarmac' },
+            'park-walkway':  { cost: 70,    run: 0,   cat: 'path',    name: 'Park Walkway' },
+            'park-road':     { cost: 80,    run: 0,   cat: 'path',    name: 'Park Road' },
+            'promenade':     { cost: 100,   run: 0,   cat: 'path',    name: 'Promenade' },
+            'grand-avenue':  { cost: 120,   run: 0,   cat: 'path',    name: 'Grand Avenue' },
             
             // Rides - all unlocked
             'spiral-slide':      { cost: 1200,  run: 220,  cat: 'ride',    name: 'Spiral Slide' },
@@ -75,10 +94,12 @@
         
         // Economy - same as classic
         economy: {
-            guestEntryFee: 10,
-            foodRevenuePerStall: 50,
+            foodRevenuePerStall: 30,
             demolishCost: 50,
             guestGenDivisor: 2000,
+            fairPriceBase: 8,
+            fairPriceScale: 0.15,
+            maxGuestsDivisor: 30,
             foodPerGuests: 50,
             ridesPerGuests: 75,
             pathsPerGuests: 20,
@@ -100,6 +121,16 @@
             coaster: { amount: 15, ticks: 84 },
             food: { amount: 10, ticks: 42 },
             goal: { amount: 20, ticks: 42 }
+        },
+        
+        // Staff types (all available)
+        staff: {
+            janitor:     { name: 'Janitor',     icon: 'staff-janitor',     color: '#5da6ff',
+                           cost: 150, salary: 30, effect: 'cleanliness', maxCount: 10 },
+            mechanic:    { name: 'Mechanic',    icon: 'staff-mechanic',    color: '#ff9c52',
+                           cost: 250, salary: 50, effect: 'reliability', maxCount: 8 },
+            entertainer: { name: 'Entertainer', icon: 'staff-entertainer', color: '#c7a4f6',
+                           cost: 200, salary: 40, effect: 'fun', maxCount: 6 }
         }
     };
     

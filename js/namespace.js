@@ -1,5 +1,5 @@
 /**
- * Pixel Park Tycoon - Global Namespace
+ * Pixel Park Paradise - Global Namespace
  * All game modules attach to this object to avoid global scope pollution
  */
 const PPT = {
@@ -44,10 +44,11 @@ const PPT = {
          * @returns {string}
          */
         formatMoney: function(amount) {
-            if (amount >= 0) {
-                return '€' + amount.toLocaleString();
+            var a = Math.round(amount);
+            if (a >= 0) {
+                return '\u20ac' + a.toLocaleString('en', { maximumFractionDigits: 0 });
             }
-            return '-€' + Math.abs(amount).toLocaleString();
+            return '-\u20ac' + Math.abs(a).toLocaleString('en', { maximumFractionDigits: 0 });
         },
         
         /**

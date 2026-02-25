@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Pixel Park Tycoon</title>
+    <title>Pixel Park Paradise</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -13,9 +13,8 @@
     <div id="title-intro">
         <div class="intro-content">
             <h1 class="intro-title">
-                <span class="title-word">PIXEL</span>
-                <span class="title-word">PARK</span>
-                <span class="title-word">TYCOON</span>
+                <span class="title-word">PIXEL PARK</span>
+                <span class="title-word">PARADISE</span>
             </h1>
         </div>
     </div>
@@ -23,7 +22,8 @@
     <!-- Welcome Screen -->
     <div id="welcome-screen" style="display:none;">
         <div class="welcome-header">
-            <h1 class="welcome-title">PIXEL PARK<br>TYCOON</h1>
+            <h1 class="welcome-title">PIXEL PARK PARADISE</h1>
+            <p class="slogan">Build your dream funfair, one ride at a time</p>
         </div>
         <div class="welcome-preview-container">
             <canvas id="welcome-preview" width="560" height="220"></canvas>
@@ -39,7 +39,7 @@
     <!-- Scenario Selection Screen -->
     <div id="scenario-screen" style="display:none;">
         <div class="scenario-header">
-            <h1 class="scenario-title">PIXEL PARK TYCOON</h1>
+            <h1 class="scenario-title">PIXEL PARK PARADISE</h1>
         </div>
         <div class="scenario-back-mobile">
             <button class="back-arrow-btn" onclick="showWelcomeScreen()">
@@ -64,6 +64,15 @@
         </div>
     </div>
     
+    <!-- Roadmap Modal -->
+    <div id="roadmap-modal">
+        <div class="roadmap-content">
+            <h2>Roadmap</h2>
+            <div id="roadmap-timeline"></div>
+            <button class="menu-btn" onclick="closeRoadmap()">CLOSE</button>
+        </div>
+    </div>
+    
     <!-- Help Modal -->
     <div id="help-modal">
         <div class="help-content">
@@ -73,7 +82,7 @@
             <p>• Guests arrive, spend money, and leave as time passes</p>
             <p>• Follow guest feedback to improve happiness</p>
             <p>• More guests means more progress and higher status</p>
-            <p class="highlight">Grow your park, attract bigger crowds, and aim for Diamond status.</p>
+            <p class="highlight">Grow your park, complete challenges, and become world famous!</p>
             <button class="menu-btn" onclick="closeHelp()">GOT IT!</button>
         </div>
     </div>
@@ -126,73 +135,162 @@
             <rect x="4" y="2" width="16" height="20" rx="2"/>
             <line x1="12" y1="18" x2="12" y2="18.01"/>
         </svg>
-        <p class="landscape-text">Please rotate your device<br>for the best experience</p>
+        <p class="landscape-text">Please rotate your device to landscape<br>for the best experience</p>
     </div>
     
     <!-- Game Container -->
     <div id="game-container" style="display:none;">
-        <!-- Top Bar -->
-        <div id="top-bar">
-            <div class="logo"><canvas id="logo-icon" width="20" height="20" style="image-rendering:pixelated;"></canvas><span class="logo-text">PIXEL PARK TYCOON</span></div>
-            <div class="top-controls">
-                <button class="icon-btn" id="pause-btn" onclick="togglePause()" title="Pause"><canvas id="pause-icon" width="16" height="16"></canvas></button>
-                <button class="icon-btn" onclick="showHelp()" title="Help">?</button>
-                <button class="icon-btn" id="settings-btn" onclick="showSettings()" title="Settings"><canvas id="settings-icon" width="16" height="16"></canvas></button>
-                <button id="debug-btn" onclick="toggleDebugPanel()">DEBUG</button>
-            </div>
-        </div>
-        
-        <!-- Status Bar -->
-        <div id="status-bar">
-            <div class="stat" data-stat="time"><canvas class="stat-icon" id="time-icon" width="16" height="16"></canvas><span id="time-display">Monday (morning)</span></div>
-            <div class="stat" data-stat="money"><canvas class="stat-icon" id="coin-icon" width="16" height="16"></canvas><span id="money-display">€5.000</span></div>
-            <div class="stat" data-stat="guests"><canvas class="stat-icon" id="guest-icon" width="16" height="16"></canvas><span id="guest-display">0</span><canvas class="stat-arrow" id="guest-arrow" width="10" height="10" style="display:none;"></canvas></div>
-            <div class="stat" data-stat="happy"><canvas class="stat-icon" id="happy-icon" width="16" height="16"></canvas><span id="happy-display">Okay</span><canvas class="stat-arrow" id="happy-arrow" width="10" height="10" style="display:none;"></canvas></div>
-            <div class="stat-spacer"></div>
-            <div class="stat stat-goals" data-stat="goals"><canvas class="stat-icon" id="goals-icon" width="16" height="16"></canvas><span id="goals-display">Bronze challenge · 250 guests</span></div>
-        </div>
-        
-        <!-- Notification Bar -->
-        <div id="notification-bar"><canvas id="notif-icon" width="16" height="16" style="image-rendering:pixelated;"></canvas><span id="notif-text">Welcome! Start building your dream park!</span></div>
-        
-        <!-- Main Area -->
-        <div id="main-area">
-            <!-- Park View -->
-            <div id="park-container">
+
+        <!-- Full Screen Park -->
+        <div id="park-container">
+            <div id="canvas-wrapper">
+                <canvas id="outside-canvas" width="1280" height="1024"></canvas>
+                <div id="outside-tint"></div>
                 <canvas id="park-canvas" width="640" height="384"></canvas>
                 <canvas id="particle-canvas" width="640" height="384"></canvas>
-                <div id="pause-overlay">PAUSED</div>
+                <div id="rain-overlay"></div>
+                <canvas id="rain-canvas" width="1280" height="1024"></canvas>
+                <div id="weather-tint"></div>
+                <canvas id="foreground-canvas" width="1280" height="1024"></canvas>
+                <canvas id="park-overlay-canvas" width="832" height="448"></canvas>
+                <div id="foreground-tint"></div>
+                <div id="master-tint"></div>
+                <canvas id="lantern-glow-canvas" width="640" height="384"></canvas>
             </div>
-            
-            <!-- Pan gesture overlay (outside park-container for fixed positioning) -->
-            <div id="pan-overlay">
-                <canvas id="pan-arrow-left" class="pan-arrow" width="50" height="50"></canvas>
-                <canvas id="pan-arrow-right" class="pan-arrow" width="50" height="50"></canvas>
+            <div id="pause-overlay"><div id="pause-resume-btn">PAUSED<br><span style="font-size:12px;opacity:0.7;margin-top:8px;display:block;">Tap to resume</span></div></div>
+        </div>
+
+        <!-- Pan gesture overlay -->
+        <div id="pan-overlay">
+            <canvas id="pan-arrow-left" class="pan-arrow" width="50" height="50"></canvas>
+            <canvas id="pan-arrow-right" class="pan-arrow" width="50" height="50"></canvas>
+        </div>
+
+        <!-- Floating Top Bar -->
+        <div id="top-bar" class="float-top-bar">
+            <div class="bar-left">
+                <button class="float-btn" id="pause-btn" onclick="togglePause()" title="Pause"><canvas id="pause-icon" width="16" height="16"></canvas></button>
+                <div class="chip day-chip stat-clickable" id="day-stat" onclick="PPT.ui.toggleInfoDialog('day')"><canvas class="stat-icon" id="time-icon" width="16" height="16"></canvas><span id="time-display">Monday</span></div>
+                <div class="bar-divider"></div>
+                <div class="chip stat-chip money stat-clickable" id="money-stat" onclick="PPT.ui.toggleInfoDialog('money')"><span class="s-icon"><canvas class="stat-icon" id="coin-icon" width="16" height="16"></canvas></span><span class="s-val" id="money-display">€5.000</span></div>
+                <div class="chip stat-chip guests stat-clickable" id="guests-stat" onclick="PPT.ui.toggleInfoDialog('guests')"><span class="s-icon"><canvas class="stat-icon" id="guest-icon" width="16" height="16"></canvas></span><span class="s-val" id="guest-display">0</span></div>
+                <div class="chip stat-chip happy stat-clickable" id="happy-stat" onclick="PPT.ui.toggleInfoDialog('happy')"><span class="s-icon"><canvas class="stat-icon" id="happy-icon" width="16" height="16"></canvas></span><span class="s-val" id="happy-display">Okay</span></div>
             </div>
-            
-            <!-- Sidebar -->
-            <div id="sidebar">
-                <div class="sidebar-section">
-                    <div class="section-title"><canvas id="build-icon" width="12" height="12" style="image-rendering:pixelated;"></canvas>BUILD</div>
-                    <div class="tab-container">
-                        <button class="tab-btn active" data-tab="paths" onclick="switchTab('paths')"><canvas class="tab-icon" id="tab-paths" width="18" height="18"></canvas><span class="tab-label">PATHS</span></button>
-                        <button class="tab-btn" data-tab="rides" onclick="switchTab('rides')"><canvas class="tab-icon" id="tab-rides" width="18" height="18"></canvas><span class="tab-label">RIDES</span></button>
-                        <button class="tab-btn" data-tab="coasters" onclick="switchTab('coasters')"><canvas class="tab-icon" id="tab-coasters" width="18" height="18"></canvas><span class="tab-label">COASTERS</span></button>
-                        <button class="tab-btn" data-tab="food" onclick="switchTab('food')"><canvas class="tab-icon" id="tab-food" width="18" height="18"></canvas><span class="tab-label">FOOD</span></button>
-                        <button class="tab-btn" data-tab="decor" onclick="switchTab('decor')"><canvas class="tab-icon" id="tab-decor" width="18" height="18"></canvas><span class="tab-label">DECOR</span></button>
-                    </div>
-                    <div id="tab-paths" class="tab-content active"><div class="build-items-grid"></div></div>
-                    <div id="tab-rides" class="tab-content"><div class="build-items-grid"></div></div>
-                    <div id="tab-coasters" class="tab-content"><div class="build-items-grid"></div></div>
-                    <div id="tab-food" class="tab-content"><div class="build-items-grid"></div></div>
-                    <div id="tab-decor" class="tab-content"><div class="build-items-grid"></div></div>
+            <div class="bar-center"></div>
+            <div class="bar-right">
+                <button class="float-btn" onclick="showHelp()" title="Help">?</button>
+                <button class="float-btn" id="settings-btn" onclick="showSettings()" title="Settings"><canvas id="settings-icon" width="16" height="16"></canvas></button>
+                <button class="float-btn debug-toggle" id="debug-btn" onclick="toggleDebugPanel()"><canvas id="debug-icon" width="16" height="16"></canvas></button>
+            </div>
+        </div>
+
+        <!-- Toast notification -->
+        <div id="toast-layer" style="display:none;">
+            <div id="notification-bar" class="toast-bar"><canvas id="notif-icon" width="16" height="16" style="image-rendering:pixelated;"></canvas><span id="notif-text"></span></div>
+        </div>
+
+        <!-- Info Dialogs (non-modal, like finance panel) -->
+        <div id="day-info-dialog" class="info-dialog" style="display:none;">
+            <div class="info-header"><span class="info-title">Day & Time</span><button class="info-close" onclick="PPT.ui.closeInfoDialog('day')">&times;</button></div>
+            <div class="info-body" id="day-info-body"></div>
+        </div>
+        <div id="guests-info-dialog" class="info-dialog" style="display:none;">
+            <div class="info-header"><span class="info-title">Guests</span><button class="info-close" onclick="PPT.ui.closeInfoDialog('guests')">&times;</button></div>
+            <div class="info-body" id="guests-info-body"></div>
+        </div>
+        <div id="happy-info-dialog" class="info-dialog" style="display:none;">
+            <div class="info-header"><span class="info-title">Happiness</span><button class="info-close" onclick="PPT.ui.closeInfoDialog('happy')">&times;</button></div>
+            <div class="info-body" id="happy-info-body"></div>
+        </div>
+
+        <!-- Finance Panel (non-modal dialog) -->
+        <div id="finance-panel" style="display:none;">
+            <div class="fin-header">
+                <span class="fin-title">Daily Finances</span>
+                <button class="fin-close" id="fin-close-btn">&times;</button>
+            </div>
+            <div id="finance-table-wrap"></div>
+        </div>
+
+        <!-- Floating Side Panel -->
+        <div id="build-panel">
+            <div class="cat-strip">
+                <button class="cat-btn active" data-cat="paths" onclick="switchCat('paths')"><canvas class="cat-icon" id="cat-paths-icon" width="20" height="20"></canvas><span class="cat-label">Paths</span></button>
+                <button class="cat-btn" data-cat="rides" onclick="switchCat('rides')"><canvas class="cat-icon" id="cat-rides-icon" width="20" height="20"></canvas><span class="cat-label">Rides</span></button>
+                <button class="cat-btn" data-cat="coasters" onclick="switchCat('coasters')"><canvas class="cat-icon" id="cat-coasters-icon" width="20" height="20"></canvas><span class="cat-label">Coasters</span></button>
+                <button class="cat-btn" data-cat="food" onclick="switchCat('food')"><canvas class="cat-icon" id="cat-food-icon" width="20" height="20"></canvas><span class="cat-label">Food</span></button>
+                <button class="cat-btn" data-cat="decor" onclick="switchCat('decor')"><canvas class="cat-icon" id="cat-decor-icon" width="20" height="20"></canvas><span class="cat-label">Decor</span></button>
+                <div class="cat-divider"></div>
+                <button class="cat-btn manage" data-cat="staff" onclick="switchCat('staff')"><canvas class="cat-icon" id="cat-staff-icon" width="20" height="20"></canvas><span class="cat-label">Staff</span></button>
+                <button class="cat-btn manage" data-cat="tickets" onclick="switchCat('tickets')"><canvas class="cat-icon" id="cat-tickets-icon" width="20" height="20"></canvas><span class="cat-label">Tickets</span></button>
+                <button class="cat-btn manage" data-cat="objectives" onclick="switchCat('objectives')"><canvas class="cat-icon" id="cat-goals-icon" width="20" height="20"></canvas><span class="cat-label">Goals</span></button>
+                <div class="cat-bottom-spacer"></div>
+                <div class="cat-divider"></div>
+                <button class="cat-btn sell-cat" data-cat="sell" onclick="switchCat('sell')"><canvas class="cat-icon" id="cat-sell-icon" width="20" height="20"></canvas><span class="cat-label">Sell</span></button>
+            </div>
+
+            <div class="panel-main">
+                <div class="panel-head">
+                    <div class="panel-title"><span id="panelLabel">Paths</span></div>
+                    <button class="panel-collapse" id="collapseBtn" title="Collapse panel">▶</button>
                 </div>
-                <div class="sidebar-section demolish-section">
-                    <button class="demolish-btn" id="demolish-btn" onclick="selectDemolish()">
-                        <canvas class="item-icon" id="demolish-tool-icon" width="16" height="16"></canvas>
-                        <span class="item-name">Sell</span>
-                        <span class="item-cost sell-refund">+60%</span>
-                    </button>
+
+                <div class="panel-scroll" id="panelScroll">
+                    <!-- Build: Paths -->
+                    <div class="panel-content active" data-panel="paths">
+                        <div id="tab-paths" class="tab-content active"><div class="build-items-grid"></div></div>
+                    </div>
+                    <!-- Build: Rides -->
+                    <div class="panel-content" data-panel="rides">
+                        <div id="tab-rides" class="tab-content active"><div class="build-items-grid"></div></div>
+                    </div>
+                    <!-- Build: Coasters -->
+                    <div class="panel-content" data-panel="coasters">
+                        <div id="tab-coasters" class="tab-content active"><div class="build-items-grid"></div></div>
+                    </div>
+                    <!-- Build: Food -->
+                    <div class="panel-content" data-panel="food">
+                        <div id="tab-food" class="tab-content active"><div class="build-items-grid"></div></div>
+                    </div>
+                    <!-- Build: Decor -->
+                    <div class="panel-content" data-panel="decor">
+                        <div id="tab-decor" class="tab-content active"><div class="build-items-grid"></div></div>
+                    </div>
+                    <!-- Staff -->
+                    <div class="panel-content" data-panel="staff">
+                        <div id="staff-panel"></div>
+                    </div>
+                    <!-- Pricing -->
+                    <div class="panel-content" data-panel="tickets">
+                        <div class="pricing-section">
+                            <div class="price-card">
+                                <div class="pc-header">
+                                    <canvas class="pc-icon-canvas" id="pricing-ticket-icon" width="20" height="20"></canvas>
+                                    <span class="pc-label">Entry Fee</span>
+                                    <span class="pc-desc">per guest</span>
+                                </div>
+                                <div class="price-control">
+                                    <button class="pc-minus" onclick="PPT.ui.adjustEntryFee(-1)">−</button>
+                                    <span class="pc-value" id="pricing-fee-display">€0</span>
+                                    <button class="pc-plus" onclick="PPT.ui.adjustEntryFee(1)">+</button>
+                                </div>
+                                <input type="range" class="pricing-slider" id="pricing-fee-slider" min="0" max="99" value="0" oninput="PPT.ui.setEntryFee(this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Objectives -->
+                    <div class="panel-content" data-panel="objectives">
+                        <div id="objectives-panel" class="objectives-list"></div>
+                    </div>
+                    <!-- Sell -->
+                    <div class="panel-content" data-panel="sell">
+                        <div class="sell-info">
+                            <canvas class="sell-icon-canvas" id="sell-panel-icon" width="32" height="32"></canvas>
+                            <span class="sell-title">Sell Mode</span>
+                            <span class="sell-desc">Click any placed building to remove it and get a partial refund.</span>
+                            <span class="sell-refund-badge">+60% refund</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -204,6 +302,66 @@
         <div class="tooltip-cost"></div>
         <div class="tooltip-running"></div>
         <div class="tooltip-desc"></div>
+    </div>
+    
+    <!-- Event Modal (Dilemma) -->
+    <div id="event-modal">
+        <div class="event-modal-content">
+            <canvas id="event-icon" width="32" height="32" style="image-rendering:pixelated;"></canvas>
+            <div class="event-name" id="event-name"></div>
+            <div class="event-desc" id="event-desc"></div>
+            <div class="event-buttons">
+                <button class="event-btn event-btn-a" id="event-btn-a"></button>
+                <button class="event-btn event-btn-b" id="event-btn-b"></button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Guest Info Card -->
+    <div id="guest-info-card" style="display:none;">
+        <div class="gic-header">
+            <span class="gic-name" id="gic-name"></span>
+            <button class="gic-close" onclick="PPT.ui.hideGuestCard()">&times;</button>
+        </div>
+        <div class="gic-body">
+            <canvas class="gic-sprite" id="gic-sprite" width="32" height="32"></canvas>
+            <div class="gic-details">
+                <div class="gic-type" id="gic-type"></div>
+                <div class="gic-mode" id="gic-mode"></div>
+                <div class="gic-status" id="gic-status"></div>
+            </div>
+        </div>
+        <div class="gic-section" id="gic-wishlist-section">
+            <div class="gic-section-label">Wishlist:</div>
+            <div class="gic-list" id="gic-wishlist"></div>
+        </div>
+        <div class="gic-section" id="gic-visited-section">
+            <div class="gic-section-label">Visited:</div>
+            <div class="gic-list" id="gic-visited"></div>
+        </div>
+        <div class="gic-bars">
+            <div class="gic-bar-row"><span class="gic-bar-label">Hunger</span><div class="gic-bar"><div class="gic-bar-fill hunger" id="gic-hunger"></div></div><span class="gic-bar-pct" id="gic-hunger-pct"></span></div>
+            <div class="gic-bar-row"><span class="gic-bar-label">Thirst</span><div class="gic-bar"><div class="gic-bar-fill thirst" id="gic-thirst"></div></div><span class="gic-bar-pct" id="gic-thirst-pct"></span></div>
+        </div>
+        <div class="gic-footer">
+            <span id="gic-spent"></span>
+        </div>
+        <button class="gic-pickup-btn" id="gic-pickup-btn" onclick="PPT.game.pickUpGuest()">Pick Up</button>
+    </div>
+    
+    <!-- Food Stall Info Card -->
+    <div id="stall-info-card" style="display:none;">
+        <div class="gic-header">
+            <span class="gic-name" id="sic-name"></span>
+            <button class="gic-close" onclick="PPT.ui.hideStallCard()">&times;</button>
+        </div>
+        <div class="sic-body">
+            <div class="sic-row" id="sic-type"></div>
+            <div class="sic-row" id="sic-price"></div>
+            <div class="sic-row" id="sic-visitors"></div>
+            <div class="sic-row sic-highlight" id="sic-sold"></div>
+            <div class="sic-row sic-highlight" id="sic-revenue"></div>
+        </div>
     </div>
     
     <!-- Confetti Canvas -->
@@ -223,6 +381,7 @@
     <script src="js/game.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/debug.js"></script>
+    <script src="js/events.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /**
- * Pixel Park Tycoon - Main Entry Point
+ * Pixel Park Paradise - Main Entry Point
  * Initialization, event handlers, and game loop
  */
 
@@ -46,7 +46,15 @@
     // ==================== GLOBAL FUNCTIONS (for inline onclick) ====================
     
     window.switchTab = function(t) {
-        PPT.ui.switchTab(t);
+        PPT.ui.switchCat(t);
+    };
+    
+    window.switchPanel = function(p) {
+        PPT.ui.switchCat(p);
+    };
+    
+    window.switchCat = function(cat) {
+        PPT.ui.switchCat(cat);
     };
     
     window.togglePause = function() {
@@ -63,6 +71,14 @@
     
     window.closeHelp = function() {
         PPT.ui.closeHelp();
+    };
+    
+    window.showRoadmap = function() {
+        PPT.ui.showRoadmap();
+    };
+    
+    window.closeRoadmap = function() {
+        PPT.ui.closeRoadmap();
     };
     
     window.toggleDebugPanel = function() {
@@ -155,7 +171,16 @@
             PPT.game.initBirds();
             
             // Reset UI
+            PPT.ui.hideGuestCard();
+            var em = document.getElementById('event-modal');
+            if (em) em.classList.remove('active');
+            var fp = document.getElementById('finance-panel');
+            if (fp) fp.style.display = 'none';
+            var ro = document.getElementById('rain-overlay');
+            if (ro) ro.classList.remove('active');
+            if (PPT.events) PPT.events.updateEffectsBar();
             PPT.ui.buildBuildItems();
+            PPT.ui.buildStaffPanel();
             PPT.ui.updateDisplay();
             PPT.ui.updateMoney();
             PPT.ui.updateGoals();
@@ -819,8 +844,10 @@
     }
     
     function drawGuest(ctx, x, y, index) {
-        var colors = PPT.config.GUEST_COLORS;
+        var outfits = PPT.config.OUTFIT_COMBOS;
         var hairColors = PPT.config.HAIR_COLORS;
+        var skins = PPT.config.SKIN_COLORS;
+        var outfit = outfits[index % outfits.length];
         
         // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
@@ -828,12 +855,12 @@
         ctx.ellipse(x, y + 12, 5, 2, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // Body
-        ctx.fillStyle = colors[index % colors.length];
+        // Body (shirt color)
+        ctx.fillStyle = outfit[0];
         ctx.fillRect(x - 4, y, 8, 10);
         
         // Head
-        ctx.fillStyle = '#FFCCBC';
+        ctx.fillStyle = skins[index % skins.length];
         ctx.beginPath();
         ctx.arc(x, y - 4, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -844,8 +871,8 @@
         ctx.arc(x, y - 6, 4, Math.PI, 0);
         ctx.fill();
         
-        // Arms
-        ctx.fillStyle = colors[index % colors.length];
+        // Arms (shirt color)
+        ctx.fillStyle = outfit[0];
         ctx.fillRect(x - 6, y + 2, 3, 5);
         ctx.fillRect(x + 3, y + 2, 3, 5);
     }
@@ -1253,9 +1280,9 @@
         // Guests
         for (var p = 0; p < 6; p++) {
             var px = 25 + p * 38;
-            ctx.fillStyle = PPT.config.GUEST_COLORS[p % 8];
+            ctx.fillStyle = PPT.config.OUTFIT_COMBOS[p % 8][0];
             ctx.fillRect(px - 3, h * 0.78, 6, 8);
-            ctx.fillStyle = '#FFCCBC';
+            ctx.fillStyle = PPT.config.SKIN_COLORS[p % PPT.config.SKIN_COLORS.length];
             ctx.beginPath();
             ctx.arc(px, h * 0.75, 4, 0, Math.PI * 2);
             ctx.fill();
@@ -1284,10 +1311,15 @@
         var warning = document.getElementById('landscape-warning');
         if (!warning) return;
         
-        var isSmallLandscape = window.innerHeight < 500 && window.innerWidth > window.innerHeight;
+        var isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
+        var isPortrait = window.innerHeight > window.innerWidth;
         var gameActive = document.getElementById('game-container').style.display !== 'none';
         
-        warning.classList.toggle('active', isSmallLandscape && gameActive);
+        warning.classList.toggle('active', isMobile && isPortrait && gameActive);
+        
+        if (gameActive && screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function() {});
+        }
     }
     
     // ==================== MOBILE PAN OVERLAY ====================
@@ -1401,9 +1433,13 @@
             
             // Regenerate guest sprites based on guest count
             G.guestSprites = [];
+            G.guestTypeCounts = { thrillSeeker: 0, foodie: 0, family: 0, vip: 0 };
             for (var i = 0; i < Math.min(G.guests, 50); i++) {
                 PPT.game.spawnGuest();
             }
+            
+            // Regenerate staff walking sprites
+            PPT.game.rebuildStaffSprites();
         } else {
             // Create fresh state and generate world
             G = PPT.state.create(PPT.currentScenario);
@@ -1412,11 +1448,14 @@
         
         PPT.audio.init();
         
+        // Compute/recompute building entrances (ensures correct priority after load)
+        PPT.game.recomputeEntrances();
+        
         // Hide all menu screens
         document.getElementById('title-intro').style.display = 'none';
         document.getElementById('welcome-screen').style.display = 'none';
         document.getElementById('scenario-screen').style.display = 'none';
-        document.getElementById('game-container').style.display = 'flex';
+        document.getElementById('game-container').style.display = 'block';
         
         stopWelcomePreview();
         
@@ -1428,51 +1467,259 @@
         confCanvas = document.getElementById('confetti-canvas');
         confCtx = confCanvas.getContext('2d');
         
-        PPT.render.init(parkCtx, partCtx, confCtx);
+        // Initialize outside canvas (background with grass, trees, path)
+        var outsideCanvas = document.getElementById('outside-canvas');
+        var outsideCtx = outsideCanvas.getContext('2d');
+        var foregroundCanvas = document.getElementById('foreground-canvas');
+        var foregroundCtx = foregroundCanvas.getContext('2d');
+        var parkOverlayCanvas = document.getElementById('park-overlay-canvas');
+        var parkOverlayCtx = parkOverlayCanvas.getContext('2d');
+        var outsideTint = document.getElementById('outside-tint');
+        var foregroundTint = document.getElementById('foreground-tint');
+        var masterTint = document.getElementById('master-tint');
+        PPT.render.initOutside(outsideCtx, foregroundCtx, outsideTint, foregroundTint, masterTint);
+        
+        PPT.render.init(parkCtx, partCtx, confCtx, parkOverlayCtx);
+        
+        // Position outside and foreground canvases relative to park canvas within canvas-wrapper
+        function positionOutsideCanvases() {
+            var parkRect = parkCanvas.getBoundingClientRect();
+            var scale = parkRect.width / 640;
+            // Outside canvas is 1280x1024 with park at pixel offset (320, 320)
+            var outsideW = 1280 * scale;
+            var outsideH = 1024 * scale;
+            outsideCanvas.style.width = outsideW + 'px';
+            outsideCanvas.style.height = outsideH + 'px';
+            foregroundCanvas.style.width = outsideW + 'px';
+            foregroundCanvas.style.height = outsideH + 'px';
+            // Park canvas top-left = canvas-wrapper top-left, so offset = -320*scale
+            var offsetX = -(320 * scale);
+            var offsetY = -(320 * scale);
+            outsideCanvas.style.left = offsetX + 'px';
+            outsideCanvas.style.top = offsetY + 'px';
+            foregroundCanvas.style.left = offsetX + 'px';
+            foregroundCanvas.style.top = offsetY + 'px';
+            // Position tint overlays to match outside canvas (covers everything)
+            outsideTint.style.width = outsideW + 'px';
+            outsideTint.style.height = outsideH + 'px';
+            outsideTint.style.left = offsetX + 'px';
+            outsideTint.style.top = offsetY + 'px';
+            foregroundTint.style.width = outsideW + 'px';
+            foregroundTint.style.height = outsideH + 'px';
+            foregroundTint.style.left = offsetX + 'px';
+            foregroundTint.style.top = offsetY + 'px';
+            // Master tint covers everything (park + outside)
+            var masterTintEl = document.getElementById('master-tint');
+            if (masterTintEl) {
+                masterTintEl.style.width = outsideW + 'px';
+                masterTintEl.style.height = outsideH + 'px';
+                masterTintEl.style.left = offsetX + 'px';
+                masterTintEl.style.top = offsetY + 'px';
+            }
+            // Rain canvas matches outside canvas position
+            var rainCanvas = document.getElementById('rain-canvas');
+            if (rainCanvas) {
+                rainCanvas.style.width = outsideW + 'px';
+                rainCanvas.style.height = outsideH + 'px';
+                rainCanvas.style.left = offsetX + 'px';
+                rainCanvas.style.top = offsetY + 'px';
+            }
+            // Position park overlay canvas (extends 192px left + 64px above park)
+            var HEADROOM = 64;
+            var LEFTEXTEND = 192;
+            var overlayW = (640 + LEFTEXTEND) * scale;
+            var overlayH = (384 + HEADROOM) * scale;
+            parkOverlayCanvas.style.width = overlayW + 'px';
+            parkOverlayCanvas.style.height = overlayH + 'px';
+            parkOverlayCanvas.style.left = -(LEFTEXTEND * scale) + 'px';
+            parkOverlayCanvas.style.top = -(HEADROOM * scale) + 'px';
+            // Position lantern glow canvas to match park canvas
+            var glowCanvas = document.getElementById('lantern-glow-canvas');
+            if (glowCanvas) {
+                glowCanvas.style.width = parkRect.width + 'px';
+                glowCanvas.style.height = parkRect.height + 'px';
+                glowCanvas.style.left = '0px';
+                glowCanvas.style.top = '0px';
+            }
+            // Position rain overlay and weather tint to cover full outside area
+            var rainOverlay = document.getElementById('rain-overlay');
+            if (rainOverlay) {
+                rainOverlay.style.width = outsideW + 'px';
+                rainOverlay.style.height = outsideH + 'px';
+                rainOverlay.style.left = offsetX + 'px';
+                rainOverlay.style.top = offsetY + 'px';
+            }
+            var weatherTint = document.getElementById('weather-tint');
+            if (weatherTint) {
+                weatherTint.style.width = outsideW + 'px';
+                weatherTint.style.height = outsideH + 'px';
+                weatherTint.style.left = offsetX + 'px';
+                weatherTint.style.top = offsetY + 'px';
+            }
+        }
+        
+        // Draw outside area and position it
+        PPT.render.drawOutsideArea();
+        positionOutsideCanvases();
+        window.addEventListener('resize', positionOutsideCanvases);
+        
+        // Expose for periodic realignment
+        window._positionOutsideCanvases = positionOutsideCanvases;
+        
+        // Use ResizeObserver to catch any layout shifts
+        if (typeof ResizeObserver !== 'undefined') {
+            var ro = new ResizeObserver(positionOutsideCanvases);
+            ro.observe(parkCanvas);
+        }
+        
+        // Periodic safety check for width changes
+        var lastParkW = 0;
+        setInterval(function() {
+            var r = parkCanvas.getBoundingClientRect();
+            if (r.width !== lastParkW) {
+                lastParkW = r.width;
+                positionOutsideCanvases();
+            }
+        }, 2000);
         
         // Setup canvas event handlers
-        parkCanvas.addEventListener('mousemove', function(e) {
-            var r = parkCanvas.getBoundingClientRect();
-            G.hover = {
-                x: Math.floor((e.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
-                y: Math.floor((e.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
-            };
-        });
-        parkCanvas.addEventListener('mouseleave', function() { G.hover = null; });
         parkCanvas.addEventListener('click', function(e) {
             var r = parkCanvas.getBoundingClientRect();
-            var x = Math.floor((e.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE);
-            var y = Math.floor((e.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE);
+            var cx = (e.clientX - r.left) * (parkCanvas.width / r.width);
+            var cy = (e.clientY - r.top) * (parkCanvas.height / r.height);
+            var x = Math.floor(cx / PPT.config.TILE_SIZE);
+            var y = Math.floor(cy / PPT.config.TILE_SIZE);
+            
+            // Drop carried guest
+            if (G.carriedGuest) {
+                PPT.game.dropGuest(cx, cy);
+                return;
+            }
+            
             if (G.demolishMode) {
                 PPT.game.demolish(x, y);
             } else if (G.selected) {
                 PPT.game.place(x, y, G.selected);
+            } else {
+                // Click-to-inspect guest
+                var guest = PPT.game.inspectGuestAt(cx, cy);
+                if (guest) {
+                    PPT.ui.showGuestCard(guest);
+                } else {
+                    PPT.ui.hideGuestCard();
+                    // Try to inspect a building (food stall or attraction)
+                    var building = PPT.game.findBuildingAtCoord(x, y);
+                    if (building && !building.building) {
+                        var scenario = PPT.currentScenario;
+                        var d = scenario ? scenario.buildings[building.type] : null;
+                        if (d && d.cat === 'food') {
+                            PPT.ui.showStallCard(building);
+                        } else if (d && (d.cat === 'ride' || d.cat === 'coaster')) {
+                            PPT.ui.showAttractionCard(building);
+                        } else {
+                            PPT.ui.hideStallCard();
+                        }
+                    } else {
+                        PPT.ui.hideStallCard();
+                    }
+                }
             }
         });
+        // Mousemove: update carried guest position
+        parkCanvas.addEventListener('mousemove', function(e) {
+            var r = parkCanvas.getBoundingClientRect();
+            var cx = (e.clientX - r.left) * (parkCanvas.width / r.width);
+            var cy = (e.clientY - r.top) * (parkCanvas.height / r.height);
+            G.hover = {
+                x: Math.floor(cx / PPT.config.TILE_SIZE),
+                y: Math.floor(cy / PPT.config.TILE_SIZE)
+            };
+            if (G.carriedGuest) {
+                G.carriedGuest.x = cx - 4;
+                G.carriedGuest.y = cy - 5;
+            }
+        });
+        parkCanvas.addEventListener('mouseleave', function(e) {
+            G.hover = null;
+            if (G.carriedGuest) {
+                // Drop off-canvas
+                var r = parkCanvas.getBoundingClientRect();
+                var cx = (e.clientX - r.left) * (parkCanvas.width / r.width);
+                var cy = (e.clientY - r.top) * (parkCanvas.height / r.height);
+                PPT.game.dropGuest(cx, cy);
+            }
+        });
+        var longPressTimer = null;
+        var longPressGuest = null;
         parkCanvas.addEventListener('touchstart', function(e) {
-            // Only prevent default if something is selected (for building/demolishing)
-            // Otherwise allow scrolling
+            var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
+            var cx = (t.clientX - r.left) * (parkCanvas.width / r.width);
+            var cy = (t.clientY - r.top) * (parkCanvas.height / r.height);
+            
+            if (G.carriedGuest) {
+                e.preventDefault();
+                G.carriedGuest.x = cx - 4;
+                G.carriedGuest.y = cy - 5;
+                return;
+            }
+            
             if (G.selected || G.demolishMode) {
                 e.preventDefault();
-                var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
                 G.hover = {
-                    x: Math.floor((t.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
-                    y: Math.floor((t.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
+                    x: Math.floor(cx / PPT.config.TILE_SIZE),
+                    y: Math.floor(cy / PPT.config.TILE_SIZE)
                 };
+                return;
+            }
+            
+            // Long-press detection for guest pickup
+            var guest = PPT.game.inspectGuestAt(cx, cy);
+            if (guest) {
+                e.preventDefault();
+                longPressGuest = guest;
+                longPressTimer = setTimeout(function() {
+                    if (longPressGuest === guest) {
+                        G.inspectedGuest = guest;
+                        PPT.game.pickUpGuest();
+                        longPressGuest = null;
+                    }
+                }, 300);
             }
         }, { passive: false });
         parkCanvas.addEventListener('touchmove', function(e) {
-            // Only prevent default if something is selected
-            if (G.selected || G.demolishMode) {
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; longPressGuest = null; }
+            if (G.selected || G.demolishMode || G.carriedGuest) {
                 e.preventDefault();
                 var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
+                var cx = (t.clientX - r.left) * (parkCanvas.width / r.width);
+                var cy = (t.clientY - r.top) * (parkCanvas.height / r.height);
                 G.hover = {
-                    x: Math.floor((t.clientX - r.left) * (parkCanvas.width / r.width) / PPT.config.TILE_SIZE),
-                    y: Math.floor((t.clientY - r.top) * (parkCanvas.height / r.height) / PPT.config.TILE_SIZE)
+                    x: Math.floor(cx / PPT.config.TILE_SIZE),
+                    y: Math.floor(cy / PPT.config.TILE_SIZE)
                 };
+                if (G.carriedGuest) {
+                    G.carriedGuest.x = cx - 4;
+                    G.carriedGuest.y = cy - 5;
+                }
             }
         }, { passive: false });
         parkCanvas.addEventListener('touchend', function(e) {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                // Short tap on guest = inspect
+                if (longPressGuest) {
+                    PPT.ui.showGuestCard(longPressGuest);
+                    longPressGuest = null;
+                }
+                return;
+            }
+            longPressGuest = null;
+            
+            if (G.carriedGuest) {
+                PPT.game.dropGuest(G.carriedGuest.x + 4, G.carriedGuest.y + 5);
+                return;
+            }
             if (!G.hover) return;
             if (G.demolishMode) {
                 PPT.game.demolish(G.hover.x, G.hover.y);
@@ -1495,6 +1742,12 @@
             });
         }
         
+        // Pause overlay resume button
+        var pauseResumeBtn = document.getElementById('pause-resume-btn');
+        if (pauseResumeBtn) {
+            pauseResumeBtn.addEventListener('click', function() { togglePause(); });
+        }
+        
         if (settingsBtn) {
             settingsBtn.addEventListener('mouseenter', function() {
                 PPT.render.drawIcon(document.getElementById('settings-icon')?.getContext('2d'), 'gear', 16, true);
@@ -1514,12 +1767,22 @@
             }
         });
         
+        // Dismiss guest card on click outside
+        document.addEventListener('click', function(e) {
+            var card = document.getElementById('guest-info-card');
+            if (!card || card.style.display === 'none') return;
+            if (card.contains(e.target)) return;
+            if (parkCanvas.contains(e.target)) return; // canvas click handles its own
+            PPT.ui.hideGuestCard();
+        });
+        
         // Setup mobile pan overlay
         setupPanOverlay();
         
         // Build UI
         PPT.ui.initIcons();
         PPT.ui.buildBuildItems();
+        PPT.ui.buildStaffPanel();
         PPT.ui.updateDisplay();
         
         // Show debug button if enabled
@@ -1527,6 +1790,9 @@
             var btn = document.getElementById('debug-btn');
             if (btn) btn.style.display = 'inline-block';
         }
+        
+        // Init events effects bar
+        if (PPT.events) PPT.events.updateEffectsBar();
         
         // Start game loop and tick
         if (gameLoopId) cancelAnimationFrame(gameLoopId);
@@ -1536,10 +1802,13 @@
             PPT.render.renderPark();
             PPT.render.updateParticles();
             PPT.render.updateConfetti();
+            PPT.render.updateOutsideTint();
             PPT.game.updateGuests();
+            PPT.game.updateStaff();
             PPT.game.updateBirds();
             PPT.game.updateLeaves();
             PPT.game.updateSparkles();
+            if (PPT.events) PPT.events.updateRain();
             gameLoopId = requestAnimationFrame(gameLoop);
         }
         gameLoop();
@@ -1593,6 +1862,11 @@
             if (e.target === this) closeHelp();
         });
         
+        // Roadmap modal click outside
+        document.getElementById('roadmap-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeRoadmap();
+        });
+        
         // Credits modal click outside
         document.getElementById('credits-modal').addEventListener('click', function(e) {
             if (e.target === this) closeCredits();
@@ -1608,6 +1882,11 @@
                 document.querySelectorAll('.build-item').forEach(function(b) { b.classList.remove('selected'); });
                 var btn = document.getElementById('demolish-btn');
                 if (btn) btn.classList.remove('selected');
+                PPT.ui.hideGuestCard();
+                if (G.carriedGuest) {
+                    // Drop back to nearest path
+                    PPT.game.dropGuest(G.carriedGuest.x + 4, G.carriedGuest.y + 5);
+                }
             }
             if (e.key === ' ') {
                 e.preventDefault();
@@ -1615,6 +1894,11 @@
             }
             if (e.key === 'd' || e.key === 'D') {
                 selectDemolish();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                var rm = document.getElementById('roadmap-modal');
+                if (rm && rm.classList.contains('active')) closeRoadmap();
+                else showRoadmap();
             }
         });
         

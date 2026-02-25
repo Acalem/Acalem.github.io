@@ -1,5 +1,5 @@
 /**
- * Pixel Park Tycoon - Debug Panel
+ * Pixel Park Paradise - Debug Panel
  * Live stats, formulas, and graphs for development
  */
 
@@ -43,6 +43,23 @@
     
     PPT.debug.getSpeed = function() {
         return speedMultiplier;
+    };
+    
+    PPT.debug.triggerDilemma = function(index) {
+        var d = PPT.events.DILEMMAS[index];
+        if (!d) return;
+        // Close debug panel first so it doesn't overlap
+        var panel = document.getElementById('debug-panel');
+        if (panel) panel.classList.remove('active');
+        PPT.events.showDilemma(d);
+    };
+    
+    PPT.debug.triggerAutoEvent = function(index) {
+        var ev = PPT.events.AUTO_EVENTS[index];
+        if (!ev) return;
+        ev.exec();
+        PPT.ui.showNotif('[DEBUG] Triggered: ' + ev.name, 'info');
+        PPT.debug.updatePanel();
     };
     
     PPT.debug.updatePanel = function() {
@@ -145,6 +162,45 @@
             html += '<tr><td>' + goal.name + '</td><td>' + goal.guests + '</td><td>€' + goal.reward + '</td><td>' + status + '</td></tr>';
         });
         html += '</table>';
+        
+        // Event Triggers
+        if (PPT.events) {
+            html += '<h3>Trigger Dilemma</h3>';
+            html += '<div class="debug-event-grid">';
+            PPT.events.DILEMMAS.forEach(function(d, i) {
+                html += '<button class="debug-event-btn" onclick="PPT.debug.triggerDilemma(' + i + ')">' + d.name + '</button>';
+            });
+            html += '</div>';
+            
+            html += '<h3>Trigger Auto-Event</h3>';
+            html += '<div class="debug-event-grid">';
+            PPT.events.AUTO_EVENTS.forEach(function(ev, i) {
+                html += '<button class="debug-event-btn debug-event-auto" onclick="PPT.debug.triggerAutoEvent(' + i + ')">' + ev.name + '</button>';
+            });
+            html += '</div>';
+        }
+        
+        // Active Effects
+        if (G.activeEffects && G.activeEffects.length > 0) {
+            html += '<h3>Active Effects</h3>';
+            html += '<table class="debug-table"><tr><th>ID</th><th>Type</th><th>Mod</th><th>Ticks Left</th></tr>';
+            G.activeEffects.forEach(function(e) {
+                html += '<tr><td>' + e.id + '</td><td>' + e.type + '</td><td>' + e.modifier + '</td><td>' + e.ticks + '</td></tr>';
+            });
+            html += '</table>';
+        }
+        
+        // Finance tracking
+        if (G.todayFinances) {
+            html += '<h3>Today\'s Finance Tracking</h3>';
+            html += '<table class="debug-table"><tr><th>Category</th><th>Amount</th></tr>';
+            var cats = ['entryFees','foodRevenue','runningCosts','staffSalaries','construction','events','rewards'];
+            cats.forEach(function(cat) {
+                var v = G.todayFinances[cat] || 0;
+                if (v !== 0) html += '<tr><td>' + cat + '</td><td>' + (v > 0 ? '+' : '') + '€' + v + '</td></tr>';
+            });
+            html += '</table>';
+        }
         
         panel.innerHTML = html;
         

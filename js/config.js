@@ -1,5 +1,5 @@
 /**
- * Pixel Park Tycoon - Configuration
+ * Pixel Park Paradise - Configuration
  * Game constants, color palette, and base definitions
  */
 
@@ -12,16 +12,16 @@
     PPT.config.GRID_HEIGHT = 12;
     
     // Day/time settings
-    PPT.config.TICKS_PER_DAY = 84;
+    PPT.config.TICKS_PER_DAY = 156;
     PPT.config.DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
     // Day period boundaries (as percentage of TICKS_PER_DAY)
-    // night(0-7%) -> morning(7-36%) -> afternoon(36-64%) -> evening(64-93%) -> night(93-100%)
+    // night(0-4%) -> morning(4-35%) -> afternoon(35-65%) -> evening(65-96%) -> night(96-100%)
     PPT.config.DAY_PERIODS = {
-        night1End: 0.07,      // ~6 ticks at 84
-        morningEnd: 0.36,     // ~30 ticks at 84
-        afternoonEnd: 0.64,   // ~54 ticks at 84
-        eveningEnd: 0.93      // ~78 ticks at 84
+        night1End: 0.038,      // ~6 ticks at 156
+        morningEnd: 0.346,    // ~54 ticks at 156 (2x longer)
+        afternoonEnd: 0.654,  // ~102 ticks at 156 (2x longer)
+        eveningEnd: 0.962     // ~150 ticks at 156 (2x longer)
     };
     
     // Helper function to get period boundaries in ticks
@@ -47,9 +47,21 @@
         return 'night';
     };
     
-    // Guest colors for sprite variation
-    PPT.config.GUEST_COLORS = ['#ff7dad', '#5da6ff', '#7bdb87', '#ffe94d', '#c7a4f6', '#84d7fc', '#ff9c52', '#ff7b7b'];
+    // Guest skin tones (8 variations)
+    PPT.config.SKIN_COLORS = ['#fde0c8', '#f5d0a9', '#e8b88a', '#dba97a', '#c68642', '#a86b32', '#8d5524', '#5c3310'];
     PPT.config.HAIR_COLORS = ['#6c5043', '#3c2820', '#ffe94d', '#ff7b7b', '#2a2a3e', '#9b6a3b'];
+    // 8 outfit color combos: [shirtColor, pantsColor]
+    PPT.config.OUTFIT_COMBOS = [
+        ['#5da6ff', '#3d5a80'], // blue + navy
+        ['#ff7b7b', '#4a4a5a'], // red + dark grey
+        ['#7bdb87', '#8a7a50'], // green + khaki
+        ['#ffe94d', '#6b5335'], // yellow + brown
+        ['#c7a4f6', '#5a4570'], // purple + dark purple
+        ['#ff7dad', '#6a6a7a'], // pink + grey
+        ['#ff9c52', '#2e4057'], // orange + navy
+        ['#5ce0d6', '#2a6060']  // teal + dark teal
+    ];
+    PPT.config.BODY_TYPES = ['man', 'woman', 'boy', 'girl'];
     
     // Color palette (C)
     PPT.config.C = {
@@ -124,9 +136,86 @@
     };
     
     // Path types that count as walkable
-    PPT.config.PATH_TYPES = ['path', 'asphalt', 'wooden-path', 'sand-path', 'gravel-path', 'tiles', 'entrance'];
+    PPT.config.PATH_TYPES = ['dirt-trail', 'gravel-trail', 'dirt-lane', 'gravel-walk', 'stone-paving', 'tarmac', 'park-walkway', 'park-road', 'promenade', 'grand-avenue', 'entrance'];
+    
+    // Guest types - park composition drives type distribution
+    PPT.config.GUEST_TYPES = {
+        thrillSeeker: { label: 'Thrill Seeker', icon: 'guest-thrill', color: '#ff7b7b',
+                        preference: 'coaster', spendMult: 0.5, driver: 'coaster',
+                        pref: 'Loves big thrills, skips the food' },
+        foodie:       { label: 'Foodie',        icon: 'guest-foodie', color: '#ff9c52',
+                        preference: 'food',    spendMult: 2.5, driver: 'food',
+                        pref: 'Here for the food, big spender' },
+        family:       { label: 'Family',        icon: 'guest-family', color: '#7bdb87',
+                        preference: 'ride',    spendMult: 1.2, driver: 'ride',
+                        pref: 'Enjoys more gentle rides' },
+        vip:          { label: 'VIP',           icon: 'guest-vip',    color: '#ffd93d',
+                        preference: 'decor',   spendMult: 2.0, driver: 'decor',
+                        pref: 'Appreciates a beautiful park' }
+    };
+    
+    PPT.config.GUEST_NAMES = [
+        'Alex','Sam','Max','Jo','Robin','Kai','Lou','Finn','Mia','Zoe','Lily','Eva',
+        'Noa','Ava','Ida','Ivy','Leo','Tom','Ben','Eli','Luca','Nico','Hugo','Otto',
+        'Ruby','Luna','Jade','Iris','Cleo','Rosa','Tim','Nora','Ollie','Milo','Jack',
+        'Theo','Noah','Liam','Carlijn','Axel','Emma','Sora','Yuki','Aria','Maya','Tess',
+        'Cara','Wren','Felix','Oscar','Marco','Dante','Elsa','Greta','Hana','Piper',
+        'Jasper','Casper','Rowan','Quinn','Blair','Sage','Fern','Bea'
+    ];
     
     // Tree types for world generation
     PPT.config.TREE_TYPES = ['tree-oak', 'tree-pine', 'tree-cherry'];
+    
+    // ==================== BEHAVIOR SYSTEM CONFIG ====================
+    
+    // Food stall product definitions: food_type and product_price
+    PPT.config.FOOD_PRODUCTS = {
+        'cotton-candy':  { food_type: 'food',  product_price: 5, name: 'Cotton Candy' },
+        'coffee-stand':  { food_type: 'drink', product_price: 4, name: 'Coffee' },
+        'ice-cream':     { food_type: 'food',  product_price: 6, name: 'Ice Cream' },
+        'soft-drinks':   { food_type: 'drink', product_price: 3, name: 'Soft Drink' },
+        'waffles':       { food_type: 'food',  product_price: 7, name: 'Waffle' },
+        'burger-joint':  { food_type: 'food',  product_price: 9, name: 'Burger' }
+    };
+    
+    // Capacity formula: how many guests can be inside at once
+    PPT.config.getCapacity = function(type, cost) {
+        var cat = null;
+        var scenario = PPT.currentScenario;
+        if (scenario && scenario.buildings[type]) cat = scenario.buildings[type].cat;
+        if (cat === 'coaster') return Math.max(4, Math.floor(cost / 800));
+        if (cat === 'ride')    return Math.max(3, Math.floor(cost / 400));
+        if (cat === 'food')    return Math.max(2, Math.floor(cost / 400));
+        return 1;
+    };
+    
+    // Popularity: freshness multiplier based on ticks since built
+    PPT.config.FRESHNESS_TABLE = [
+        { maxTicks: 50,  mult: 1.5 },
+        { maxTicks: 200, mult: 1.2 },
+        { maxTicks: 500, mult: 1.0 }
+        // 500+ defaults to 0.8
+    ];
+    
+    // Behavior system constants
+    PPT.config.BEHAVIOR = {
+        visitorRatio: 0.85,          // 85% visitors, 15% wanderers
+        wishlistMin: 2,
+        wishlistMax: 4,
+        hungerMin: 0,
+        hungerMax: 25,
+        thirstMin: 0,
+        thirstMax: 30,
+        hungerThreshMin: 70,
+        hungerThreshMax: 85,
+        thirstThreshMin: 65,
+        thirstThreshMax: 80,
+        hungerRateMin: 0.25,
+        hungerRateMax: 0.4,
+        thirstRateMin: 0.3,
+        thirstRateMax: 0.5,
+        attractionBaseTime: 30,      // base ticks in attraction
+        attractionTimeVariance: 20   // ± random
+    };
     
 })();
