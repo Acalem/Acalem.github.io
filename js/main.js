@@ -167,6 +167,9 @@
             // Regenerate world
             PPT.game.generateWorld();
             
+            // PERF: Invalidate caches for the fresh grid
+            PPT.render.invalidateGrid();
+            
             // Regenerate birds
             PPT.game.initBirds();
             
@@ -1448,6 +1451,9 @@
         
         PPT.audio.init();
         
+        // PERF: Ensure all grid-dependent caches are invalidated for the new/loaded state
+        PPT.render.invalidateGrid();
+        
         // Compute/recompute building entrances (ensures correct priority after load)
         PPT.game.recomputeEntrances();
         
@@ -1798,23 +1804,84 @@
         if (gameLoopId) cancelAnimationFrame(gameLoopId);
         if (tickInterval) clearInterval(tickInterval);
         
-        function gameLoop() {
+        // =====================================================================
+        // THREE-TIER GAME LOOP
+        // =====================================================================
+        // Tier 1 — Slow simulation (1.4/sec): economy, spawning, day/night
+        // Tier 2 — Fixed logic step (60/sec): guest/staff/bird movement
+        // Tier 3 — Variable render: drawing to canvas (as fast as device allows,
+        //          capped at ~60fps to avoid waste on high-refresh displays)
+        //
+        // Tiers 1 and 2 use time accumulators so they always run at the correct
+        // rate regardless of actual frame rate. A phone at 20fps runs the same
+        // number of ticks and logic steps per second as a PC at 144fps.
+        // =====================================================================
+        
+        var RENDER_MIN_MS = 1000 / 62;  // Tier 3: cap render at ~60fps
+        var LOGIC_MS = 1000 / 60;       // Tier 2: fixed 60Hz logic step
+        var MAX_LOGIC_STEPS = 10;        // covers devices down to ~6fps
+        var MAX_CATCHUP_TICKS = 3;
+        
+        var lastFrameTime = 0;
+        var tickAccumulator = 0;
+        var logicAccumulator = 0;
+        
+        // Expose tick rate so debug speed control can modify it
+        window._pptTickMs = 700;
+        
+        function gameLoop(timestamp) {
+            gameLoopId = requestAnimationFrame(gameLoop);
+            
+            // Throttle render rate on high-refresh displays
+            var elapsed = timestamp - lastFrameTime;
+            if (elapsed < RENDER_MIN_MS) return;
+            lastFrameTime = timestamp - (elapsed % RENDER_MIN_MS);
+            
+            // Cap total elapsed to prevent bursts after tab switch (2 seconds max)
+            if (elapsed > 2000) elapsed = 2000;
+            
+            if (!G.paused) {
+                // === Tier 1: Slow simulation ticks ===
+                // Ticks are cheap (math/economy only) — always catch up fully.
+                var tickMs = window._pptTickMs || 700;
+                tickAccumulator += elapsed;
+                var ticksToRun = Math.min(Math.floor(tickAccumulator / tickMs), MAX_CATCHUP_TICKS);
+                if (ticksToRun > 0) {
+                    tickAccumulator -= ticksToRun * tickMs;
+                    for (var t = 0; t < ticksToRun; t++) {
+                        PPT.game.tick();
+                    }
+                }
+                
+                // === Tier 2: Fixed-step logic (movement, animation) ===
+                // Logic steps are lightweight position math — safe to catch up.
+                // Only rendering is expensive, and it runs just once per frame.
+                logicAccumulator += elapsed;
+                var logicSteps = Math.min(Math.floor(logicAccumulator / LOGIC_MS), MAX_LOGIC_STEPS);
+                if (logicSteps > 0) {
+                    logicAccumulator -= logicSteps * LOGIC_MS;
+                    for (var s = 0; s < logicSteps; s++) {
+                        PPT.game.updateGuests();
+                        PPT.game.updateStaff();
+                        PPT.game.updateBirds();
+                        PPT.game.updateLeaves();
+                        PPT.game.updateSparkles();
+                        if (PPT.events) PPT.events.updateRain();
+                    }
+                }
+            }
+            
+            // === Tier 3: Render (always runs once per frame) ===
             PPT.render.renderPark();
             PPT.render.updateParticles();
             PPT.render.updateConfetti();
             PPT.render.updateOutsideTint();
-            PPT.game.updateGuests();
-            PPT.game.updateStaff();
-            PPT.game.updateBirds();
-            PPT.game.updateLeaves();
-            PPT.game.updateSparkles();
-            if (PPT.events) PPT.events.updateRain();
-            gameLoopId = requestAnimationFrame(gameLoop);
         }
-        gameLoop();
+        gameLoopId = requestAnimationFrame(gameLoop);
         
-        tickInterval = setInterval(PPT.game.tick, 700);
-        window._pptTickInterval = tickInterval;
+        // Tick is now driven by the game loop — no setInterval needed.
+        tickInterval = null;
+        window._pptTickInterval = null;
         
         PPT.audio.startMusic();
         checkOrientation();
@@ -1837,7 +1904,9 @@
             if (keys.join('') === code) {
                 G.debugMode = true;
                 G.goalsAchieved = [true, true, true, true, true];
+                G.goalsClaimed = [true, true, true, true, true];
                 PPT.ui.updateBuildItems();
+                PPT.ui.updateGoalsDot();
                 var btn = document.getElementById('debug-btn');
                 if (btn) btn.style.display = 'inline-block';
                 PPT.ui.showNotif('Debug mode: Unlimited money enabled!', 'achievement');

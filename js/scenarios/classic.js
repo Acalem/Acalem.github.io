@@ -20,8 +20,8 @@
         // Goals/Challenges (multi-condition)
         goals: [
             { name: 'First Steps',       icon: 'goal-build',   reward: 500,
-              desc: 'Build 2 rides and 1 food stall',
-              conditions: [{ type: 'buildings', cat: 'ride', min: 2 }, { type: 'buildings', cat: 'food', min: 1 }] },
+              desc: 'Build 1 ride and 1 food stall',
+              conditions: [{ type: 'buildings', cat: 'ride', min: 1 }, { type: 'buildings', cat: 'food', min: 1 }] },
             { name: 'Open for Business', icon: 'goal-ticket',  reward: 750,
               desc: 'Set entry fee \u2265 \u20ac5 and attract 10 guests',
               conditions: [{ type: 'entryFee', min: 5 }, { type: 'guests', min: 10 }] },

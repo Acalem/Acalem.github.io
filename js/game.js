@@ -11,6 +11,29 @@
     const GRID_HEIGHT = PPT.config.GRID_HEIGHT;
     const C = PPT.config.C;
     
+    // ===== PERFORMANCE: Cached path set for guest movement =====
+    // Only rebuilt when the grid changes (tracked via PPT.render._gridVersion).
+    var _cachedPathSet = {};
+    var _pathSetVersion = -1;
+    
+    function getPathSet() {
+        var gv = PPT.render._gridVersion;
+        if (_pathSetVersion === gv) return _cachedPathSet;
+        _pathSetVersion = gv;
+        _cachedPathSet = {};
+        for (var y = 0; y < GRID_HEIGHT; y++) {
+            for (var x = 0; x < GRID_WIDTH; x++) {
+                var t = G.grid[y][x] ? G.grid[y][x].type : null;
+                if (PPT.config.PATH_TYPES.includes(t)) _cachedPathSet[x + ',' + y] = true;
+            }
+        }
+        return _cachedPathSet;
+    }
+    
+    // ===== PERFORMANCE: Throttle food stall BFS lookups =====
+    // Guests only re-search for food every N frames instead of every frame.
+    var FOOD_SEARCH_COOLDOWN = 30; // ~0.5s at 60fps
+    
     // ==================== FINANCE TRACKING ====================
     
     PPT.game.trackFinance = function(category, amount) {
@@ -279,8 +302,9 @@
         
         // Determine construction time
         var buildTicks = 0;
-        if (d.cat === 'ride' || d.cat === 'food') buildTicks = Math.floor(tpd / 2);  // half day
-        else if (d.cat === 'coaster') buildTicks = tpd;                                // 1 day
+        if (d.cat === 'ride') buildTicks = Math.floor(tpd / 2);            // half day
+        else if (d.cat === 'food') buildTicks = Math.floor(tpd / 4);     // quarter day
+        else if (d.cat === 'coaster') buildTicks = tpd;                   // 1 day
         // paths and decor: 0 = instant
         
         var isBuilding = buildTicks > 0;
@@ -297,6 +321,9 @@
         }
         
         G.buildings.push({ type, x: gx, y: gy, building: isBuilding, buildTicks: buildTicks, buildTotal: buildTicks, builtTick: isBuilding ? null : G.tick, current_visitors: 0, sales_today: 0, revenue_today: 0 });
+        
+        // PERF: Invalidate grid-dependent caches (path tiles, building openings, pathSet)
+        PPT.render.invalidateGrid();
         
         // Record entrance tile (the adjacent path tile guests use to enter)
         var newBldg = G.buildings[G.buildings.length - 1];
@@ -352,6 +379,9 @@
         }
         
         G.buildings = G.buildings.filter(b => !(b.x === tx && b.y === ty));
+        
+        // PERF: Invalidate grid-dependent caches (path tiles, building openings, pathSet)
+        PPT.render.invalidateGrid();
         
         // Remove any breakdown entry for this building
         if (G.rideBreakdowns) {
@@ -521,14 +551,8 @@
         var BEH = PPT.config.BEHAVIOR;
         var PRODUCTS = PPT.config.FOOD_PRODUCTS;
         
-        // Pre-compute path set for quick lookup
-        var pathSet = {};
-        for (var y = 0; y < GRID_HEIGHT; y++) {
-            for (var x = 0; x < GRID_WIDTH; x++) {
-                var t = G.grid[y][x] ? G.grid[y][x].type : null;
-                if (PPT.config.PATH_TYPES.includes(t)) pathSet[x + ',' + y] = true;
-            }
-        }
+        // PERF: Use cached path set (only rebuilt when grid changes)
+        var pathSet = getPathSet();
         
         G.guestSprites.forEach(function(g) {
             if (G.carriedGuest === g) return;
@@ -574,24 +598,30 @@
             
             // === STEP 2: NEEDS CHECK (priority) ===
             // Hungry/thirsty guests divert to food stalls, but save their current goal to resume after.
+            // PERF: Throttle expensive BFS food search to every FOOD_SEARCH_COOLDOWN frames per guest.
             if (g.status !== 'seeking_food') {
                 var needFood = g.hunger != null && g.hunger > g.hunger_threshold;
                 var needDrink = g.thirst != null && g.thirst > g.thirst_threshold;
                 if (needFood || needDrink) {
-                    var needType = (needDrink && (!needFood || g.thirst > g.hunger)) ? 'drink' : 'food';
-                    var gx = Math.floor(g.x / TILE_SIZE), gy = Math.floor(g.y / TILE_SIZE);
-                    var stall = PPT.game.findNearestFoodStall(gx, gy, needType);
-                    if (!stall && needType === 'food') stall = PPT.game.findNearestFoodStall(gx, gy, 'drink');
-                    if (!stall && needType === 'drink') stall = PPT.game.findNearestFoodStall(gx, gy, 'food');
-                    if (stall) {
-                        // Save current goal so we can resume after eating
-                        if (g.status === 'walking_to_goal' && g.current_goal) {
-                            g._saved_goal = { x: g.current_goal.x, y: g.current_goal.y, type: g.current_goal.type };
-                            g._saved_status = 'walking_to_goal';
+                    if (!g._foodSearchCooldown || g._foodSearchCooldown <= 0) {
+                        g._foodSearchCooldown = FOOD_SEARCH_COOLDOWN;
+                        var needType = (needDrink && (!needFood || g.thirst > g.hunger)) ? 'drink' : 'food';
+                        var gx = Math.floor(g.x / TILE_SIZE), gy = Math.floor(g.y / TILE_SIZE);
+                        var stall = PPT.game.findNearestFoodStall(gx, gy, needType);
+                        if (!stall && needType === 'food') stall = PPT.game.findNearestFoodStall(gx, gy, 'drink');
+                        if (!stall && needType === 'drink') stall = PPT.game.findNearestFoodStall(gx, gy, 'food');
+                        if (stall) {
+                            // Save current goal so we can resume after eating
+                            if (g.status === 'walking_to_goal' && g.current_goal) {
+                                g._saved_goal = { x: g.current_goal.x, y: g.current_goal.y, type: g.current_goal.type };
+                                g._saved_status = 'walking_to_goal';
+                            }
+                            g.status = 'seeking_food';
+                            g.current_goal = { x: stall.x, y: stall.y, type: stall.type };
+                            g._bfsPath = null;
                         }
-                        g.status = 'seeking_food';
-                        g.current_goal = { x: stall.x, y: stall.y, type: stall.type };
-                        g._bfsPath = null;
+                    } else {
+                        g._foodSearchCooldown--;
                     }
                 }
             }
@@ -935,25 +965,46 @@
         });
         if (allMet) {
             G.goalsAchieved[i] = true;
-            if (goals[i].reward) { G.money += goals[i].reward; PPT.game.trackFinance('rewards', goals[i].reward); }
-            G.boosts.push({ amt: PPT.currentScenario.boosts.goal.amount, ticks: PPT.currentScenario.boosts.goal.ticks });
             
-            PPT.ui.showNotif(goals[i].name + ' complete!' + (goals[i].reward ? ' +\u20ac' + goals[i].reward : ''), 'achievement');
+            // Notify but don't give reward — player must claim manually
+            PPT.ui.showNotif(goals[i].name + ' complete! Claim your reward in Goals.', 'achievement');
             PPT.audio.playSound('achievement');
-            PPT.game.spawnConfetti();
             
-            for (var j = 0; j < 15; j++) {
-                (function(jj) {
-                    setTimeout(function() { PPT.game.spawnParticle(Math.random() * 640, Math.random() * 192, 'coin'); }, jj * 50);
-                })(j);
-            }
-            
-            PPT.ui.updateMoney();
             PPT.ui.updateGoals();
+            PPT.ui.updateGoalsDot();
             PPT.ui.buildBuildItems();
             PPT.ui.buildStaffPanel();
             PPT.state.save();
         }
+    };
+    
+    PPT.game.claimGoal = function(i) {
+        var goals = PPT.currentScenario.goals;
+        if (!goals || !goals[i]) return;
+        if (!G.goalsAchieved[i] || G.goalsClaimed[i]) return;
+        
+        G.goalsClaimed[i] = true;
+        
+        // Give reward
+        if (goals[i].reward) {
+            G.money += goals[i].reward;
+            PPT.game.trackFinance('rewards', goals[i].reward);
+        }
+        G.boosts.push({ amt: PPT.currentScenario.boosts.goal.amount, ticks: PPT.currentScenario.boosts.goal.ticks });
+        
+        PPT.game.spawnConfetti();
+        for (var j = 0; j < 15; j++) {
+            (function(jj) {
+                setTimeout(function() { PPT.game.spawnParticle(Math.random() * 640, Math.random() * 192, 'coin'); }, jj * 50);
+            })(j);
+        }
+        
+        PPT.audio.playSound('achievement');
+        PPT.ui.updateMoney();
+        PPT.ui.updateGoals();
+        PPT.ui.updateGoalsDot();
+        PPT.ui.buildObjectivesPanel();
+        PPT.state.save();
     };
     
     // ==================== TIPS ====================
@@ -1356,6 +1407,7 @@
         });
         
         if (completed) {
+            PPT.render.invalidateGrid();
             PPT.ui.updateGoals();
             PPT.ui.buildBuildItems();
         }

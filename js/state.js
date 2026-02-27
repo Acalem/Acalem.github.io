@@ -61,6 +61,7 @@
                 // Gameplay
                 boosts: [],
                 goalsAchieved: scenario.goals.map(() => false),
+                goalsClaimed: scenario.goals.map(() => false),
                 entryFee: 0,
                 
                 // Staff system
@@ -170,6 +171,7 @@
                     // Gameplay progress
                     boosts: PPT._gameState.boosts,
                     goalsAchieved: PPT._gameState.goalsAchieved,
+                    goalsClaimed: PPT._gameState.goalsClaimed,
                     entryFee: PPT._gameState.entryFee,
                     
                     // Staff system
@@ -296,6 +298,13 @@
             state.boosts = saveData.boosts || [];
             var savedGoals = saveData.goalsAchieved || [];
             state.goalsAchieved = scenario.goals.map(function(_, i) { return savedGoals[i] || false; });
+            var savedClaimed = saveData.goalsClaimed;
+            if (savedClaimed) {
+                state.goalsClaimed = scenario.goals.map(function(_, i) { return savedClaimed[i] || false; });
+            } else {
+                // Backward compat: old saves auto-claimed on achieve, so mirror goalsAchieved
+                state.goalsClaimed = scenario.goals.map(function(_, i) { return savedGoals[i] || false; });
+            }
             state.entryFee = saveData.entryFee ?? 0;
             
             // Staff system

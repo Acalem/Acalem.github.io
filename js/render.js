@@ -48,6 +48,83 @@
     // Lantern positions collected during path rendering (screen px)
     var lanternPositions = [];
     
+    // ===== PERFORMANCE: Grid version & cache invalidation =====
+    // Incremented on any grid change (place/demolish/load) to invalidate caches.
+    var _gridVersion = 0;
+    PPT.render._gridVersion = 0;
+    
+    PPT.render.invalidateGrid = function() {
+        _gridVersion++;
+        PPT.render._gridVersion = _gridVersion;
+        _pathTileCache = {};
+        _tileSpriteCache = {};
+        _buildingOpeningsVersion = -1;
+    };
+    
+    // ===== PERFORMANCE: Building openings cache =====
+    var _buildingOpeningsVersion = -1;
+    
+    // ===== PERFORMANCE: Path tile cache =====
+    // Per-tile cache: key "x,y" → { canvas, ver, clean, lanterns }
+    var _pathTileCache = {};
+    
+    // ===== PERFORMANCE: Animated tile sprite cache =====
+    // Caches the rendered output of animated buildings/decorations to offscreen
+    // canvases. Each tile only re-renders every TILE_ANIM_INTERVAL frames
+    // (staggered across tiles), reducing per-frame draw calls by ~75%.
+    // Animations still play at ~15fps, which is visually identical for pixel art.
+    var _tileSpriteCache = {};
+    var TILE_ANIM_INTERVAL = 4; // re-render every 4th frame = 15fps animation
+    
+    function cachedTileDraw(x, y, sz, drawFn, arg1) {
+        var key = x + ',' + y;
+        var entry = _tileSpriteCache[key];
+        // Stagger refresh so not all tiles update on the same frame
+        var shouldRefresh = !entry ||
+            ((G.frame + ((x * 3 + y * 7) & 15)) % TILE_ANIM_INTERVAL === 0);
+        
+        if (shouldRefresh) {
+            if (!entry) {
+                var pw = sz * TILE_SIZE;
+                var cvs = document.createElement('canvas');
+                cvs.width = pw; cvs.height = pw;
+                entry = { canvas: cvs, ctx: cvs.getContext('2d'), pw: pw };
+                _tileSpriteCache[key] = entry;
+            }
+            entry.ctx.clearRect(0, 0, entry.pw, entry.pw);
+            entry.ctx.save();
+            entry.ctx.translate(-x * TILE_SIZE, -y * TILE_SIZE);
+            var saved = parkCtx;
+            parkCtx = entry.ctx;
+            drawFn(x, y, arg1);
+            parkCtx = saved;
+            entry.ctx.restore();
+        }
+        
+        parkCtx.drawImage(entry.canvas, x * TILE_SIZE, y * TILE_SIZE);
+    }
+    
+    // ===== PERFORMANCE: Pre-rendered lantern glow sprite =====
+    var _glowSprite = null;
+    var _GLOW_SIZE = 56;
+    
+    function getGlowSprite() {
+        if (_glowSprite) return _glowSprite;
+        var c = document.createElement('canvas');
+        c.width = _GLOW_SIZE; c.height = _GLOW_SIZE;
+        var cx2 = _GLOW_SIZE / 2;
+        var ctx = c.getContext('2d');
+        var grad = ctx.createRadialGradient(cx2, cx2, 0, cx2, cx2, cx2);
+        grad.addColorStop(0, 'rgba(255,230,140,0.55)');
+        grad.addColorStop(0.3, 'rgba(255,200,80,0.30)');
+        grad.addColorStop(0.6, 'rgba(255,160,40,0.12)');
+        grad.addColorStop(1, 'rgba(255,120,20,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, _GLOW_SIZE, _GLOW_SIZE);
+        _glowSprite = c;
+        return c;
+    }
+    
     /**
      * Initialize canvas contexts
      */
@@ -134,6 +211,9 @@
      * For multi-tile buildings: prefer leftmost (x) / lowest (y).
      */
     function computeBuildingOpenings() {
+        if (_buildingOpeningsVersion === _gridVersion) return;
+        _buildingOpeningsVersion = _gridVersion;
+        
         buildingOpenings = {};
         if (!G || !G.buildings) return;
         var scenario = PPT.currentScenario;
@@ -2933,6 +3013,20 @@
     function drawNewPath(x, y) {
         var c = G.grid[y][x];
         if (!c) return;
+        
+        // === Cache check ===
+        var cleanBracket = Math.floor((G.cleanliness != null ? G.cleanliness : 100) / 10);
+        var cacheKey = x + ',' + y;
+        var cached = _pathTileCache[cacheKey];
+        if (cached && cached.ver === _gridVersion && cached.clean === cleanBracket) {
+            parkCtx.drawImage(cached.canvas, x * TILE_SIZE, y * TILE_SIZE);
+            if (cached.lanterns) {
+                for (var li = 0; li < cached.lanterns.length; li++) lanternPositions.push(cached.lanterns[li]);
+            }
+            return;
+        }
+        
+        // === Render (stored to cache) ===
         var pm = PATH_MAP[c.type];
         if (!pm) return;
         var tex = pm.tex, g = pm.grandeur;
@@ -2945,14 +3039,14 @@
         var mask = buildPathMask(a, cl, ct, cr, cb, R);
         var off = document.createElement('canvas');
         off.width = 32; off.height = 32;
-        var oc = off.getContext('2d');
+        var oc = off.getContext('2d', { willReadFrequently: true });
         oc.imageSmoothingEnabled = false;
         var px = x * TILE_SIZE, py = y * TILE_SIZE;
         var grassData = parkCtx.getImageData(px, py, 32, 32);
         oc.putImageData(grassData, 0, 0);
         var surfCvs = document.createElement('canvas');
         surfCvs.width = 32; surfCvs.height = 32;
-        var sc = surfCvs.getContext('2d');
+        var sc = surfCvs.getContext('2d', { willReadFrequently: true });
         sc.imageSmoothingEnabled = false;
         drawPathSurface(sc, x, y, tex, lv);
         var surfData = sc.getImageData(0, 0, 32, 32);
@@ -2967,11 +3061,22 @@
         }
         oc.putImageData(finalData, 0, 0);
         drawPathEdgeEffect(oc, mask);
+        var lanternsBefore = lanternPositions.length;
         drawPathDecos(oc, x, y, tex, lv, a, mask, cl, ct, cr, cb);
         if (G && G.cleanliness < 70) {
             drawLitter(oc, x, y, G.cleanliness);
         }
         parkCtx.drawImage(off, px, py);
+        
+        // === Store in cache ===
+        var newLanterns = lanternPositions.length > lanternsBefore
+            ? lanternPositions.slice(lanternsBefore) : null;
+        _pathTileCache[cacheKey] = {
+            canvas: off,
+            ver: _gridVersion,
+            clean: cleanBracket,
+            lanterns: newLanterns
+        };
     }
 
     function drawPathThumbnail(ctx, pathType, sz) {
@@ -5210,6 +5315,12 @@
     let masterTintEl = null;
     let rainCtx = null;
     
+    // ===== PERFORMANCE: DOM write caching for tints =====
+    var _lastTintColor = '', _lastTintOpacity = '';
+    var _outsideTintCleared = false, _fgTintCleared = false;
+    var _weatherTintEl = null;
+    var _lastWeatherBg = '', _lastWeatherOp = '';
+    
     // Initialize outside canvas
     PPT.render.initOutside = function(ctx, fgCtx, tintEl, fgTintEl, masterTint) {
         outsideCtx = ctx;
@@ -5218,26 +5329,34 @@
         foregroundTintEl = fgTintEl;
         masterTintEl = masterTint;
         outsideDrawn = false;
+        _lastTintColor = ''; _lastTintOpacity = '';
+        _outsideTintCleared = false; _fgTintCleared = false;
+        _weatherTintEl = null; _lastWeatherBg = ''; _lastWeatherOp = '';
         var rc = document.getElementById('rain-canvas');
         rainCtx = rc ? rc.getContext('2d') : null;
     };
     
-    // Update outside area day/night tint
+    // Update outside area day/night tint (DOM writes only when values actually change)
     PPT.render.updateOutsideTint = function() {
         const tn = getDayTint();
         if (tn.a > 0) {
             const color = 'rgba(' + tn.r + ',' + tn.g + ',' + tn.b + ',' + tn.a + ')';
-            // Use master tint to cover everything uniformly (park + outside + foreground)
-            if (masterTintEl) {
+            if (masterTintEl && (_lastTintColor !== color || _lastTintOpacity !== '1')) {
                 masterTintEl.style.backgroundColor = color;
                 masterTintEl.style.opacity = '1';
+                _lastTintColor = color;
+                _lastTintOpacity = '1';
             }
         } else {
-            if (masterTintEl) masterTintEl.style.opacity = '0';
+            if (masterTintEl && _lastTintOpacity !== '0') {
+                masterTintEl.style.opacity = '0';
+                _lastTintOpacity = '0';
+                _lastTintColor = '';
+            }
         }
-        // Hide individual tints - master tint handles everything
-        if (outsideTintEl) outsideTintEl.style.opacity = '0';
-        if (foregroundTintEl) foregroundTintEl.style.opacity = '0';
+        // Hide individual tints — only write once
+        if (outsideTintEl && !_outsideTintCleared) { outsideTintEl.style.opacity = '0'; _outsideTintCleared = true; }
+        if (foregroundTintEl && !_fgTintCleared) { foregroundTintEl.style.opacity = '0'; _fgTintCleared = true; }
     };
     
     // Draw grass tile matching the park's checkerboard pattern
@@ -5546,33 +5665,33 @@
                 }
                 
                 switch(c.type) {
-                    case 'water': drawWater(x, y); break;
+                    case 'water': cachedTileDraw(x, y, 1, drawWater); break;
                     case 'tree-oak': case 'tree-pine': case 'tree-cherry': drawTree(x, y, c.type); break;
                     case 'entrance': drawEntrance(x, y); break;
                     case 'dirt-trail': case 'gravel-trail': case 'dirt-lane': case 'gravel-walk':
                     case 'stone-paving': case 'tarmac': case 'park-walkway': case 'park-road':
                     case 'promenade': case 'grand-avenue':
                         drawNewPath(x, y); break;
-                    case 'merry-go-round': drawMerryGoRound(x, y); break;
-                    case 'ferris-wheel': drawFerrisWheel(x, y); break;
-                    case 'spiral-slide': drawSpiralSlide(x, y); break;
-                    case 'haunted-house': drawHauntedHouse(x, y); break;
-                    case 'pirate-ship': drawPirateShip(x, y); break;
-                    case 'observation-tower': drawObservationTower(x, y); break;
-                    case 'junior-coaster': drawJuniorCoaster(x, y); break;
-                    case 'steel-coaster': drawSteelCoaster(x, y); break;
-                    case 'wooden-coaster': drawWoodenCoaster(x, y); break;
-                    case 'hyper-coaster': drawHyperCoaster(x, y); break;
-                    case 'giga-coaster': drawGigaCoaster(x, y); break;
-                    case 'wild-mouse': drawWildMouse(x, y); break;
+                    case 'merry-go-round': cachedTileDraw(x, y, 1, drawMerryGoRound); break;
+                    case 'ferris-wheel': cachedTileDraw(x, y, 1, drawFerrisWheel); break;
+                    case 'spiral-slide': cachedTileDraw(x, y, 1, drawSpiralSlide); break;
+                    case 'haunted-house': cachedTileDraw(x, y, 1, drawHauntedHouse); break;
+                    case 'pirate-ship': cachedTileDraw(x, y, 1, drawPirateShip); break;
+                    case 'observation-tower': cachedTileDraw(x, y, 1, drawObservationTower); break;
+                    case 'junior-coaster': cachedTileDraw(x, y, 2, drawJuniorCoaster); break;
+                    case 'steel-coaster': cachedTileDraw(x, y, 2, drawSteelCoaster); break;
+                    case 'wooden-coaster': cachedTileDraw(x, y, 2, drawWoodenCoaster); break;
+                    case 'hyper-coaster': cachedTileDraw(x, y, 2, drawHyperCoaster); break;
+                    case 'giga-coaster': cachedTileDraw(x, y, 2, drawGigaCoaster); break;
+                    case 'wild-mouse': cachedTileDraw(x, y, 2, drawWildMouse); break;
                     case 'ice-cream': case 'soft-drinks': case 'waffles':
                     case 'burger-joint': case 'cotton-candy': case 'coffee-stand':
-                        drawFoodStall(x, y, c.type); break;
-                    case 'bush': drawBush(x, y); break;
-                    case 'hedge': drawHedge(x, y); break;
-                    case 'flowers': drawFlowers(x, y); break;
-                    case 'statue': drawStatue(x, y); break;
-                    case 'fountain': drawFountain(x, y); break;
+                        cachedTileDraw(x, y, 1, drawFoodStall, c.type); break;
+                    case 'bush': cachedTileDraw(x, y, 1, drawBush); break;
+                    case 'hedge': cachedTileDraw(x, y, 1, drawHedge); break;
+                    case 'flowers': cachedTileDraw(x, y, 1, drawFlowers); break;
+                    case 'statue': cachedTileDraw(x, y, 1, drawStatue); break;
+                    case 'fountain': cachedTileDraw(x, y, 1, drawFountain); break;
                 }
                 
                 if (c.building) {
@@ -5666,9 +5785,10 @@
         // Day tint is handled by the master-tint overlay for consistent coloring
         
         // Weather visual overlays
+        // PERF: Cache DOM element and last values to avoid per-frame lookups/writes
         if (PPT.events) {
             var visuals = PPT.events.getActiveVisuals();
-            var weatherTintEl = document.getElementById('weather-tint');
+            if (!_weatherTintEl) _weatherTintEl = document.getElementById('weather-tint');
             
             // Build combined weather tint for full-area overlay
             var weatherBg = '';
@@ -5679,19 +5799,32 @@
                 if (rainCtx) {
                     rainCtx.clearRect(0, 0, 1280, 1024);
                     if (G.rain && G.rain.length > 0) {
-                        G.rain.forEach(function(d) {
+                        // PERF: Batch all splashes into one path, all drops into one path
+                        var hasSplash = false, hasStroke = false;
+                        rainCtx.fillStyle = 'rgba(170,210,240,0.4)';
+                        rainCtx.beginPath();
+                        for (var ri = 0; ri < G.rain.length; ri++) {
+                            var d = G.rain[ri];
                             if (d.splash) {
-                                rainCtx.fillStyle = 'rgba(170,210,240,0.4)';
-                                rainCtx.beginPath(); rainCtx.arc(d.x, d.y, 2, 0, Math.PI * 2); rainCtx.fill();
-                            } else {
-                                rainCtx.strokeStyle = 'rgba(170,210,240,0.6)';
-                                rainCtx.lineWidth = 1;
-                                rainCtx.beginPath();
+                                rainCtx.moveTo(d.x + 2, d.y);
+                                rainCtx.arc(d.x, d.y, 2, 0, Math.PI * 2);
+                                hasSplash = true;
+                            }
+                        }
+                        if (hasSplash) rainCtx.fill();
+                        
+                        rainCtx.strokeStyle = 'rgba(170,210,240,0.6)';
+                        rainCtx.lineWidth = 1;
+                        rainCtx.beginPath();
+                        for (var ri = 0; ri < G.rain.length; ri++) {
+                            var d = G.rain[ri];
+                            if (!d.splash) {
                                 rainCtx.moveTo(d.x, d.y);
                                 rainCtx.lineTo(d.x + d.vx, d.y + 3);
-                                rainCtx.stroke();
+                                hasStroke = true;
                             }
-                        });
+                        }
+                        if (hasStroke) rainCtx.stroke();
                     }
                 }
                 // Overcast tint via full-area overlay
@@ -5721,9 +5854,13 @@
                 weatherOpacity = '1';
             }
             
-            if (weatherTintEl) {
-                weatherTintEl.style.background = weatherBg;
-                weatherTintEl.style.opacity = weatherOpacity;
+            if (_weatherTintEl) {
+                if (weatherBg !== _lastWeatherBg || weatherOpacity !== _lastWeatherOp) {
+                    _weatherTintEl.style.background = weatherBg;
+                    _weatherTintEl.style.opacity = weatherOpacity;
+                    _lastWeatherBg = weatherBg;
+                    _lastWeatherOp = weatherOpacity;
+                }
             }
         }
         
@@ -5759,23 +5896,19 @@
             });
         }
         
-        // Lantern glow at night
+        // Lantern glow at night — PERF: uses pre-rendered glow sprite
         if (glowCtx) {
             glowCtx.clearRect(0, 0, 640, 384);
             if (night && lanternPositions.length > 0) {
+                var sprite = getGlowSprite();
+                var halfGlow = _GLOW_SIZE / 2;
                 glowCtx.globalCompositeOperation = 'lighter';
                 lanternPositions.forEach(function(lp) {
-                    // Warm flickering glow
                     var flicker = 0.85 + Math.sin(G.frame * 0.06 + lp.px * 0.1) * 0.15;
-                    var r = 28 * flicker;
-                    var grad = glowCtx.createRadialGradient(lp.px, lp.py, 0, lp.px, lp.py, r);
-                    grad.addColorStop(0, 'rgba(255,230,140,' + (0.55 * flicker) + ')');
-                    grad.addColorStop(0.3, 'rgba(255,200,80,' + (0.30 * flicker) + ')');
-                    grad.addColorStop(0.6, 'rgba(255,160,40,' + (0.12 * flicker) + ')');
-                    grad.addColorStop(1, 'rgba(255,120,20,0)');
-                    glowCtx.fillStyle = grad;
-                    glowCtx.fillRect(lp.px - r, lp.py - r, r * 2, r * 2);
+                    glowCtx.globalAlpha = flicker;
+                    glowCtx.drawImage(sprite, lp.px - halfGlow, lp.py - halfGlow);
                 });
+                glowCtx.globalAlpha = 1;
                 glowCtx.globalCompositeOperation = 'source-over';
             }
         }
@@ -5803,15 +5936,22 @@
     };
     
     // Confetti rendering
+    // PERF: Track canvas size to avoid resetting every frame (resets GPU buffer)
+    var _confW = 0, _confH = 0;
     PPT.render.updateConfetti = function() {
         if (!confCtx) return;
-        confCtx.canvas.width = window.innerWidth;
-        confCtx.canvas.height = window.innerHeight;
-        confCtx.clearRect(0, 0, confCtx.canvas.width, confCtx.canvas.height);
+        var ww = window.innerWidth, wh = window.innerHeight;
+        if (_confW !== ww || _confH !== wh) {
+            confCtx.canvas.width = ww;
+            confCtx.canvas.height = wh;
+            _confW = ww; _confH = wh;
+        }
+        if (G.confetti.length === 0) return;
+        confCtx.clearRect(0, 0, _confW, _confH);
         for (let i = G.confetti.length - 1; i >= 0; i--) {
             const c = G.confetti[i];
             c.x += c.vx; c.y += c.vy; c.rot += c.rotSpd; c.life -= 0.005;
-            if (c.life <= 0 || c.y > confCtx.canvas.height) { G.confetti.splice(i, 1); continue; }
+            if (c.life <= 0 || c.y > _confH) { G.confetti.splice(i, 1); continue; }
             confCtx.save();
             confCtx.translate(c.x, c.y);
             confCtx.rotate(c.rot);

@@ -71,6 +71,7 @@
         PPT.ui.updateTimeIcon();
         PPT.ui.updateHappyIcon();
         PPT.ui.updateGoals();
+        PPT.ui.updateGoalsDot();
         PPT.ui.updateMoney();
         PPT.ui.updateArrows();
         PPT.ui.updateEntryFeePopover();
@@ -119,6 +120,27 @@
             if (ic) PPT.render.drawIcon(ic.getContext('2d'), 'trophy', 16);
             el.textContent = 'All complete!';
             st.classList.add('complete');
+        }
+    };
+    
+    // Show/hide red notification dot on the Goals tab when rewards are claimable
+    PPT.ui.updateGoalsDot = function() {
+        var btn = document.querySelector('.cat-btn[data-cat="objectives"]');
+        if (!btn) return;
+        var goals = PPT.currentScenario ? PPT.currentScenario.goals : null;
+        var hasUnclaimed = false;
+        if (goals) {
+            for (var i = 0; i < goals.length; i++) {
+                if (G.goalsAchieved[i] && !G.goalsClaimed[i]) { hasUnclaimed = true; break; }
+            }
+        }
+        var dot = btn.querySelector('.goal-notif-dot');
+        if (hasUnclaimed && !dot) {
+            dot = document.createElement('span');
+            dot.className = 'goal-notif-dot';
+            btn.appendChild(dot);
+        } else if (!hasUnclaimed && dot) {
+            dot.remove();
         }
     };
     
@@ -410,14 +432,17 @@
         for (var i = 0; i < scenario.goals.length; i++) {
             var goal = scenario.goals[i];
             var done = G.goalsAchieved[i];
+            var claimed = G.goalsClaimed[i];
             var isCurrent = (i === currentIdx);
             var isLocked = (!done && i > currentIdx && currentIdx >= 0);
+            var claimable = done && !claimed;
             
             var cls = 'objective-card';
-            if (done) cls += ' completed';
+            if (claimed) cls += ' completed';
+            else if (claimable) cls += ' claimable';
             else if (isLocked) cls += ' locked';
             
-            var badgeIcon = done ? 'checkmark' : (isLocked ? 'lock' : 'trophy');
+            var badgeIcon = claimed ? 'checkmark' : (claimable ? 'trophy' : (isLocked ? 'lock' : 'trophy'));
             
             // Calculate progress for current goal
             var progressHtml = '';
@@ -442,10 +467,15 @@
                     '<div class="obj-bar"><div class="obj-bar-fill" style="width:' + pct + '%"></div></div>' +
                     '<span class="obj-pct">' + pct + '%</span>' +
                     '</div>';
-            } else if (done) {
+            } else if (claimable) {
+                progressHtml = '<div class="obj-progress">' +
+                    '<div class="obj-bar"><div class="obj-bar-fill claimable" style="width:100%"></div></div>' +
+                    '<button class="obj-claim-btn" onclick="PPT.game.claimGoal(' + i + ')">Claim \u20ac' + (goal.reward || 0) + '</button>' +
+                    '</div>';
+            } else if (claimed) {
                 progressHtml = '<div class="obj-progress">' +
                     '<div class="obj-bar"><div class="obj-bar-fill" style="width:100%"></div></div>' +
-                    '<span class="obj-pct">Done</span>' +
+                    '<span class="obj-pct">Claimed</span>' +
                     '</div>';
             }
             

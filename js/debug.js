@@ -34,11 +34,8 @@
         var baseRate = 700;
         var newRate = Math.floor(baseRate / speedMultiplier);
         
-        // Clear existing interval and set new one
-        if (window._pptTickInterval) {
-            clearInterval(window._pptTickInterval);
-        }
-        window._pptTickInterval = setInterval(PPT.game.tick, newRate);
+        // Update tick rate used by the game loop accumulator
+        window._pptTickMs = newRate;
     };
     
     PPT.debug.getSpeed = function() {
