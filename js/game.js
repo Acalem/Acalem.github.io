@@ -573,7 +573,7 @@
             
             // === STEP 1: IN ATTRACTION ===
             if (g.in_attraction) {
-                g.attraction_timer--;
+                g.attraction_timer -= ATTRACTION_TIMER_STEP; // 1/60 per logic step = 1 second per real second
                 if (g.attraction_timer <= 0) {
                     g.in_attraction = false;
                     // Decrement current_visitors on the building
@@ -784,11 +784,16 @@
     }
     
     // Helper: enter an attraction
+    // Timer counts in seconds; decremented by 1/60 each Tier 2 logic step (60Hz fixed)
+    var ATTRACTION_TIMER_STEP = 1 / 60;
+    
     function enterAttraction(g, building) {
         registerVisit(g, building);
         g.in_attraction = true;
-        g.attraction_timer = PPT.config.BEHAVIOR.attractionBaseTime +
-            Math.floor(Math.random() * PPT.config.BEHAVIOR.attractionTimeVariance);
+        // Use per-building ride time (seconds), fallback to 8s
+        var scenario = PPT.currentScenario;
+        var d = scenario ? scenario.buildings[building.type] : null;
+        g.attraction_timer = (d && d.time) ? d.time : 8;
         g._attr_x = building.x;
         g._attr_y = building.y;
         building.current_visitors = (building.current_visitors || 0) + 1;
@@ -1695,6 +1700,18 @@
             var dx = (g.x + 4) - canvasX, dy = (g.y + 3) - canvasY;
             var dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < bestDist) { bestDist = dist; best = g; }
+        });
+        return best;
+    };
+    
+    PPT.game.inspectStaffAt = function(canvasX, canvasY) {
+        if (G.selected || G.demolishMode || G.carriedGuest) return null;
+        if (!G.staffSprites) return null;
+        var best = null, bestDist = 14;
+        G.staffSprites.forEach(function(s) {
+            var dx = (s.x + 4) - canvasX, dy = (s.y + 3) - canvasY;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < bestDist) { bestDist = dist; best = s; }
         });
         return best;
     };

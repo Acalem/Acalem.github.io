@@ -592,9 +592,10 @@
         var modal = document.getElementById('event-modal');
         if (!modal) return;
 
-        // Pause game, hide guest card
+        // Pause game, hide cards
         G.paused = true;
         PPT.ui.hideGuestCard();
+        PPT.ui.hideStaffCard();
 
         document.getElementById('event-name').textContent = d.name;
         document.getElementById('event-desc').textContent = d.desc;

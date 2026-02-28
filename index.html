@@ -232,7 +232,6 @@
             <div class="panel-main">
                 <div class="panel-head">
                     <div class="panel-title"><span id="panelLabel">Paths</span></div>
-                    <button class="panel-collapse" id="collapseBtn" title="Collapse panel">▶</button>
                 </div>
 
                 <div class="panel-scroll" id="panelScroll">
@@ -294,9 +293,33 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Mobile Bottom Bar (3 buttons: Build, Manage, Sell) -->
+        <div id="mobile-bottom-bar">
+            <button class="mob-btn" id="mob-build-btn" onclick="PPT.ui.openMobileMenu('build')">
+                <canvas class="mob-btn-icon" id="mob-build-icon" width="32" height="32"></canvas>
+                <span class="mob-btn-label">Build</span>
+            </button>
+            <button class="mob-btn" id="mob-manage-btn" onclick="PPT.ui.openMobileMenu('manage')">
+                <canvas class="mob-btn-icon" id="mob-manage-icon" width="32" height="32"></canvas>
+                <span class="mob-btn-label">Manage</span>
+            </button>
+            <button class="mob-btn" id="mob-sell-btn" onclick="PPT.ui.toggleMobileSell()">
+                <canvas class="mob-btn-icon" id="mob-sell-icon" width="32" height="32"></canvas>
+                <span class="mob-btn-label">Sell</span>
+            </button>
+        </div>
+        
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu-overlay" style="display:none;">
+            <div class="mmo-header">
+                <button class="mmo-back" onclick="PPT.ui.closeMobileMenu()"><span class="mmo-back-arrow">◀</span> Back</button>
+                <span class="mmo-title" id="mmo-title">Build</span>
+            </div>
+            <div class="mmo-tabs" id="mmo-tabs"></div>
+            <div class="mmo-content" id="mmo-content"></div>
+        </div>
     </div>
-    
-    <!-- Tooltip -->
     <div id="tooltip">
         <div class="tooltip-name"></div>
         <div class="tooltip-cost"></div>
@@ -361,6 +384,25 @@
             <div class="sic-row" id="sic-visitors"></div>
             <div class="sic-row sic-highlight" id="sic-sold"></div>
             <div class="sic-row sic-highlight" id="sic-revenue"></div>
+        </div>
+    </div>
+    
+    <!-- Staff Info Card -->
+    <div id="staff-info-card" style="display:none;">
+        <div class="gic-header">
+            <span class="gic-name" id="staff-ic-name"></span>
+            <button class="gic-close" onclick="PPT.ui.hideStaffCard()">&times;</button>
+        </div>
+        <div class="gic-body">
+            <canvas class="gic-sprite" id="staff-ic-sprite" width="32" height="32"></canvas>
+            <div class="gic-details">
+                <div class="gic-type" id="staff-ic-type"></div>
+                <div class="gic-status" id="staff-ic-status"></div>
+            </div>
+        </div>
+        <div class="sic-body">
+            <div class="sic-row" id="staff-ic-salary"></div>
+            <div class="sic-row" id="staff-ic-effect"></div>
         </div>
     </div>
     

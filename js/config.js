@@ -180,12 +180,16 @@
     
     // Capacity formula: how many guests can be inside at once
     PPT.config.getCapacity = function(type, cost) {
-        var cat = null;
         var scenario = PPT.currentScenario;
-        if (scenario && scenario.buildings[type]) cat = scenario.buildings[type].cat;
-        if (cat === 'coaster') return Math.max(4, Math.floor(cost / 800));
-        if (cat === 'ride')    return Math.max(3, Math.floor(cost / 400));
-        if (cat === 'food')    return Math.max(2, Math.floor(cost / 400));
+        if (scenario && scenario.buildings[type]) {
+            var d = scenario.buildings[type];
+            // Use explicit capacity if defined
+            if (d.capacity != null) return d.capacity;
+            var cat = d.cat;
+            if (cat === 'coaster') return Math.max(4, Math.floor(cost / 800));
+            if (cat === 'ride')    return Math.max(3, Math.floor(cost / 400));
+            if (cat === 'food')    return Math.max(2, Math.floor(cost / 400));
+        }
         return 1;
     };
     
@@ -213,9 +217,7 @@
         hungerRateMin: 0.25,
         hungerRateMax: 0.4,
         thirstRateMin: 0.3,
-        thirstRateMax: 0.5,
-        attractionBaseTime: 30,      // base ticks in attraction
-        attractionTimeVariance: 20   // ± random
+        thirstRateMax: 0.5
     };
     
 })();

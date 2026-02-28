@@ -1823,6 +1823,110 @@
                     ctx.stroke();
                 }
                 break;
+            
+            // ==================== MOBILE MENU ICONS (32x32) ====================
+            case 'mob-build':
+                // Construction scene: wooden frame with hammer
+                // Ground
+                ctx.fillStyle = '#8b7355'; ctx.fillRect(1*s, 20*s, 22*s, 3*s);
+                ctx.fillStyle = '#a08868'; ctx.fillRect(1*s, 20*s, 22*s, 1*s);
+                // Wooden frame (A-shape)
+                ctx.fillStyle = '#c8a060'; ctx.lineWidth = 2.2*s; ctx.strokeStyle = '#a07830'; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(4*s, 20*s); ctx.lineTo(12*s, 5*s); ctx.lineTo(20*s, 20*s); ctx.stroke();
+                // Crossbeam
+                ctx.beginPath(); ctx.moveTo(7*s, 14*s); ctx.lineTo(17*s, 14*s); ctx.stroke();
+                // Wood grain highlights
+                ctx.strokeStyle = '#dbb878'; ctx.lineWidth = 0.8*s;
+                ctx.beginPath(); ctx.moveTo(8*s, 12*s); ctx.lineTo(12*s, 5.5*s); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(10*s, 14*s); ctx.lineTo(15*s, 14*s); ctx.stroke();
+                // Hammer (angled, resting against frame)
+                ctx.save(); ctx.translate(17*s, 10*s); ctx.rotate(0.5);
+                // Handle
+                ctx.fillStyle = '#9a6c40'; ctx.fillRect(-1*s, -1*s, 2.5*s, 12*s);
+                ctx.fillStyle = '#b8844c'; ctx.fillRect(-0.5*s, -1*s, 1*s, 12*s);
+                // Head
+                ctx.fillStyle = '#888'; ctx.fillRect(-3.5*s, -3*s, 7*s, 4*s);
+                ctx.fillStyle = '#aaa'; ctx.fillRect(-3.5*s, -3*s, 7*s, 1.5*s);
+                ctx.restore();
+                // Sparkle
+                ctx.fillStyle = '#ffd93d';
+                ctx.fillRect(20*s, 4*s, 2*s, 0.8*s); ctx.fillRect(20.6*s, 3.4*s, 0.8*s, 2*s);
+                ctx.fillRect(2*s, 8*s, 1.5*s, 0.6*s); ctx.fillRect(2.4*s, 7.7*s, 0.6*s, 1.2*s);
+                break;
+            case 'mob-manage':
+                // Clipboard with checkmarks + gear
+                // Clipboard body
+                ctx.fillStyle = '#e8dcc8';
+                ctx.beginPath(); ctx.roundRect(3*s, 4*s, 14*s, 18*s, 2*s); ctx.fill();
+                // Paper edge shadow
+                ctx.fillStyle = '#d4c8b0';
+                ctx.fillRect(15*s, 6*s, 2*s, 14*s);
+                ctx.fillRect(5*s, 20*s, 12*s, 2*s);
+                // Clipboard clip
+                ctx.fillStyle = '#8b8b8b';
+                ctx.beginPath(); ctx.roundRect(7*s, 2*s, 6*s, 4*s, 1.5*s); ctx.fill();
+                ctx.fillStyle = '#aaa';
+                ctx.fillRect(8*s, 3*s, 4*s, 1.5*s);
+                // Lines with checkmarks
+                ctx.fillStyle = '#bbb'; 
+                ctx.fillRect(8*s, 9*s, 7*s, 1*s);
+                ctx.fillRect(8*s, 13*s, 7*s, 1*s);
+                ctx.fillRect(8*s, 17*s, 7*s, 1*s);
+                // Check marks (green)
+                ctx.strokeStyle = '#50a050'; ctx.lineWidth = 1.5*s; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(4.5*s, 9*s); ctx.lineTo(5.5*s, 10.5*s); ctx.lineTo(7*s, 8*s); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(4.5*s, 13*s); ctx.lineTo(5.5*s, 14.5*s); ctx.lineTo(7*s, 12*s); ctx.stroke();
+                // Pending (empty circle for 3rd)
+                ctx.strokeStyle = '#cca040'; ctx.lineWidth = 1*s;
+                ctx.beginPath(); ctx.arc(5.8*s, 17.3*s, 1.5*s, 0, Math.PI*2); ctx.stroke();
+                // Gear (overlapping bottom-right)
+                ctx.fillStyle = '#6a9fd8';
+                ctx.beginPath(); ctx.arc(19*s, 18*s, 4*s, 0, Math.PI*2); ctx.fill();
+                for (var gi = 0; gi < 6; gi++) {
+                    var ga = gi * Math.PI / 3;
+                    ctx.beginPath(); ctx.arc(19*s + Math.cos(ga)*5.5*s, 18*s + Math.sin(ga)*5.5*s, 2*s, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.fillStyle = '#e8dcc8';
+                ctx.beginPath(); ctx.arc(19*s, 18*s, 2*s, 0, Math.PI*2); ctx.fill();
+                break;
+            case 'mob-sell':
+                // Wrecking ball with debris
+                // Crane arm
+                ctx.strokeStyle = '#ff8c42'; ctx.lineWidth = 2.5*s; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(3*s, 2*s); ctx.lineTo(18*s, 2*s); ctx.stroke();
+                // Vertical mast
+                ctx.beginPath(); ctx.moveTo(4*s, 2*s); ctx.lineTo(4*s, 9*s); ctx.stroke();
+                ctx.strokeStyle = '#cc6a2a'; ctx.lineWidth = 1*s;
+                ctx.beginPath(); ctx.moveTo(4*s, 4*s); ctx.lineTo(8*s, 2*s); ctx.stroke();
+                // Chain
+                ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5*s;
+                ctx.setLineDash([2*s, 1.5*s]);
+                ctx.beginPath(); ctx.moveTo(16*s, 2*s); ctx.lineTo(16*s, 9*s); ctx.stroke();
+                ctx.setLineDash([]);
+                // Wrecking ball (big)
+                ctx.fillStyle = '#555';
+                ctx.beginPath(); ctx.arc(16*s, 14*s, 5.5*s, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#777';
+                ctx.beginPath(); ctx.arc(14.5*s, 12.5*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#444';
+                ctx.beginPath(); ctx.arc(17.5*s, 16*s, 1.5*s, 0, Math.PI*2); ctx.fill();
+                // Debris/impact
+                ctx.fillStyle = '#c06040';
+                ctx.fillRect(1*s, 18*s, 4*s, 3*s);
+                ctx.fillRect(6*s, 19*s, 3*s, 2.5*s);
+                ctx.fillStyle = '#d88060';
+                ctx.fillRect(2*s, 16*s, 3*s, 2*s);
+                ctx.fillRect(8*s, 17*s, 2*s, 2*s);
+                // Impact lines
+                ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 1.2*s; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(21*s, 11*s); ctx.lineTo(23*s, 9*s); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(22*s, 15*s); ctx.lineTo(23.5*s, 16*s); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(20*s, 19*s); ctx.lineTo(22*s, 21*s); ctx.stroke();
+                // Small debris flying
+                ctx.fillStyle = '#c06040';
+                ctx.fillRect(22*s, 12*s, 1.5*s, 1.5*s);
+                ctx.fillRect(21*s, 19.5*s, 1.2*s, 1.2*s);
+                break;
         }
     };
     
@@ -5757,12 +5861,60 @@
             });
         }
         
+        // Pixel arrow indicator above inspected guest/staff/building
+        (function() {
+            var bounce = Math.sin((G.frame || 0) * 0.1) * 3; // bob up and down
+            var arrowColor = '#FFD93D';
+            var arrowOutline = '#1a1a2e';
+            
+            function drawPixelArrow(px, py) {
+                var ay = py - 14 + bounce;
+                // Shadow/outline
+                parkCtx.fillStyle = arrowOutline;
+                // Arrow body (3px wide, 6px tall)
+                parkCtx.fillRect(px - 2, ay - 1, 5, 8);
+                // Arrow head wings
+                parkCtx.fillRect(px - 5, ay + 4, 11, 3);
+                parkCtx.fillRect(px - 3, ay + 6, 7, 2);
+                // Arrow fill
+                parkCtx.fillStyle = arrowColor;
+                // Body
+                parkCtx.fillRect(px - 1, ay, 3, 6);
+                // Head wings
+                parkCtx.fillRect(px - 4, ay + 5, 9, 1);
+                parkCtx.fillRect(px - 2, ay + 6, 5, 1);
+                // Tip
+                parkCtx.fillRect(px, ay + 7, 1, 1);
+            }
+            
+            // Guest arrow
+            if (G.inspectedGuest && G.guestSprites.indexOf(G.inspectedGuest) !== -1) {
+                var g = G.inspectedGuest;
+                drawPixelArrow(Math.round(g.x + 4), Math.round(g.y + SPR_OY - 2));
+            }
+            // Staff arrow
+            if (G._inspectedStaff_sprite && G.staffSprites && G.staffSprites.indexOf(G._inspectedStaff_sprite) !== -1) {
+                var s = G._inspectedStaff_sprite;
+                drawPixelArrow(Math.round(s.x + SPR_OX + 8), Math.round(s.y + SPR_OY - 2));
+            }
+            // Building arrow
+            if (G._inspectedStall) {
+                var b = G._inspectedStall;
+                var bd = BUILDINGS[b.type];
+                var sz = bd ? (bd.size || 1) : 1;
+                drawPixelArrow(Math.round(b.x * TILE_SIZE + sz * TILE_SIZE / 2), Math.round(b.y * TILE_SIZE - 2));
+            }
+        })();
+        
         // Placement preview
         if (G.selected && G.hover) {
             const can = PPT.game.canPlace(G.hover.x, G.hover.y, G.selected);
             const sz = BUILDINGS[G.selected]?.size || 1;
-            parkCtx.fillStyle = can ? 'rgba(107,203,119,0.5)' : 'rgba(255,107,157,0.5)';
+            parkCtx.fillStyle = can ? 'rgba(200,255,210,0.65)' : 'rgba(255,107,157,0.5)';
             parkCtx.beginPath(); parkCtx.roundRect(G.hover.x * TILE_SIZE, G.hover.y * TILE_SIZE, TILE_SIZE * sz, TILE_SIZE * sz, 6); parkCtx.fill();
+            parkCtx.strokeStyle = can ? 'rgba(255,255,255,0.7)' : 'rgba(255,60,60,0.6)';
+            parkCtx.lineWidth = 2;
+            parkCtx.stroke();
         }
         
         // Demolish preview

@@ -88,16 +88,36 @@
             if (G.guestSprites.indexOf(G.inspectedGuest) === -1) {
                 PPT.ui.hideGuestCard();
             } else {
-                PPT.ui.showGuestCard(G.inspectedGuest);
+                PPT.ui.refreshGuestCard(G.inspectedGuest);
             }
         }
         
-        // Live-refresh stall/attraction card if open
+        // Live-refresh staff card if open
+        if (G._inspectedStaff_sprite && document.getElementById('staff-info-card').style.display !== 'none') {
+            if (!G.staffSprites || G.staffSprites.indexOf(G._inspectedStaff_sprite) === -1) {
+                PPT.ui.hideStaffCard();
+            } else {
+                PPT.ui.refreshStaffCard(G._inspectedStaff_sprite);
+            }
+        }
+        
+        // Live-refresh stall/attraction card if open (content only, no repositioning)
         if (G._inspectedStall && document.getElementById('stall-info-card').style.display !== 'none') {
             var sb = G._inspectedStall;
             var sd = PPT.currentScenario ? PPT.currentScenario.buildings[sb.type] : null;
-            if (sd && sd.cat === 'food') PPT.ui.showStallCard(sb);
-            else if (sd && (sd.cat === 'ride' || sd.cat === 'coaster')) PPT.ui.showAttractionCard(sb);
+            if (sd && sd.cat === 'food') {
+                var PRODUCTS = PPT.config.FOOD_PRODUCTS;
+                var prod = PRODUCTS[sb.type];
+                if (prod) {
+                    document.getElementById('sic-visitors').textContent = 'Guests: ' + (sb.current_visitors || 0) + '/' + PPT.game.getCapacity(sb);
+                    document.getElementById('sic-sold').textContent = 'Sold today: ' + (sb.sales_today || 0);
+                    document.getElementById('sic-revenue').textContent = 'Revenue today: \u20ac' + (sb.revenue_today || 0);
+                }
+            } else if (sd && (sd.cat === 'ride' || sd.cat === 'coaster')) {
+                var visitors = sb.current_visitors || 0;
+                var isBroken = (G.rideBreakdowns || []).some(function(bd) { return bd.x === sb.x && bd.y === sb.y; });
+                document.getElementById('sic-type').textContent = isBroken ? 'Broken down!' : visitors + ' guest' + (visitors !== 1 ? 's' : '') + ' on ride';
+            }
         }
     };
     
@@ -142,6 +162,8 @@
         } else if (!hasUnclaimed && dot) {
             dot.remove();
         }
+        // Also update mobile button dots
+        PPT.ui.updateMobileNotifDots();
     };
     
     // Get compact progress text for a goal
@@ -318,6 +340,18 @@
         PPT.ui.hideGuestCard();
         if (G.carriedGuest) PPT.game.dropGuest(G.carriedGuest.x + 4, G.carriedGuest.y + 5);
         PPT.audio.playSound('click');
+        
+        // Close mobile overlay so player can place the item
+        if (G._mobileMenuOpen) {
+            var overlay = document.getElementById('mobile-menu-overlay');
+            if (overlay) overlay.style.display = 'none';
+            // Move panel content back
+            if (G._mobilePanelNode) {
+                document.getElementById('panelScroll').appendChild(G._mobilePanelNode);
+                G._mobilePanelNode = null;
+            }
+            G._mobileMenuOpen = null;
+        }
     };
     
     PPT.ui.selectDemolish = function() {
@@ -692,15 +726,78 @@
             else if (happyVal >= 20) label = 'Unhappy';
             else label = 'Miserable';
             
-            var html = '<div class="info-row"><span class="info-label">Mood</span><span class="info-val">' + label + '</span></div>'
-                + '<div class="info-row"><span class="info-label">Score</span><span class="info-val">' + Math.round(happyVal) + '%</span></div>';
+            var html = '<div class="info-row"><span class="info-label">Mood</span><span class="info-val">' + label + '</span></div>';
             
-            // Show active effects
+            // Build actionable tips based on happiness factors
+            var scenario = PPT.currentScenario;
+            var eco = scenario.economy;
+            var c = PPT.game.countBuildings();
+            var g = G.guests;
+            var tips = [];
+            
+            // Check each happiness factor
+            if (g > 0) {
+                var needFood = Math.ceil(g / eco.foodPerGuests);
+                if (c.food < needFood) {
+                    tips.push('Guests are hungry \u2014 build more food stalls (' + c.food + '/' + needFood + ')');
+                }
+                
+                var needRides = Math.ceil(g / eco.ridesPerGuests);
+                if ((c.rides + c.coasters) < needRides) {
+                    tips.push('Not enough fun \u2014 build more rides (' + (c.rides + c.coasters) + '/' + needRides + ')');
+                }
+                
+                var needPaths = Math.ceil(g / eco.pathsPerGuests);
+                if (c.paths < needPaths) {
+                    tips.push('Overcrowded paths \u2014 build more paths (' + c.paths + '/' + needPaths + ')');
+                }
+                
+                var needDecor = Math.ceil(g / eco.decorPerGuests);
+                if (c.decor < needDecor) {
+                    tips.push('Park looks bare \u2014 add more decoration (' + c.decor + '/' + needDecor + ')');
+                }
+            }
+            
+            // Cleanliness
+            if (G.cleanliness < 50) {
+                if (G.cleanliness < 30) {
+                    tips.push('The park is filthy! Hire more janitors');
+                } else {
+                    tips.push('Litter is piling up \u2014 consider hiring a janitor');
+                }
+            }
+            
+            // Entertainer suggestion
+            var hasEntertainer = (G.staff || []).some(function(s) { return s.type === 'entertainer'; });
+            if (!hasEntertainer && happyVal < 60 && g > 0) {
+                tips.push('Entertainers can cheer up your guests');
+            }
+            
+            // Pricing issues
+            var priceMod = G.priceMod || 1;
+            if (G.entryFee === 0 && g > 0) {
+                tips.push('Your park is free! Set an entry fee to earn money');
+            } else if (priceMod < 0.3 && G.entryFee > 0) {
+                tips.push('Entry fee is way too high \u2014 almost no one is coming');
+            } else if (priceMod < 0.6 && G.entryFee > 0) {
+                tips.push('Entry fee seems steep \u2014 guests are hesitant');
+            }
+            
+            if (tips.length > 0) {
+                html += '<div class="info-effects-wrap"><div class="info-effects-label">To improve happiness:</div>';
+                tips.forEach(function(tip) {
+                    html += '<div class="info-tip-row">\u2022 ' + tip + '</div>';
+                });
+                html += '</div>';
+            } else if (g > 0) {
+                html += '<div class="info-effects-wrap"><div class="info-effects-label">Guests are satisfied!</div></div>';
+            }
+            
+            // Show active effects (weather etc)
             var effects = G.activeEffects || [];
-            html += '<div class="info-effects-wrap"><div class="info-effects-label">Active effects</div>';
-            if (effects.length === 0) {
-                html += '<div class="info-no-effects">None at this time</div>';
-            } else {
+            var hasEffects = effects.length > 0;
+            if (hasEffects) {
+                html += '<div class="info-effects-wrap"><div class="info-effects-label">Active effects</div>';
                 var shown = {};
                 effects.forEach(function(e) {
                     if (shown[e.id]) return;
@@ -739,8 +836,8 @@
                         + (modStr ? '<span class="info-effect-mod ' + modClass + '">' + modStr + '</span>' : '')
                         + '</div>';
                 });
+                html += '</div>';
             }
-            html += '</div>';
             
             body.innerHTML = html;
             
@@ -876,11 +973,53 @@
     
     // ==================== GUEST CARD ====================
     
+    // Content-only refresh (no repositioning)
+    PPT.ui.refreshGuestCard = function(guest) {
+        var card = document.getElementById('guest-info-card');
+        if (!card || card.style.display === 'none') return;
+        
+        var TYPES = PPT.config.GUEST_TYPES;
+        var td = TYPES[guest.type];
+        var scenario = PPT.currentScenario;
+        var BLDGS = scenario ? scenario.buildings : {};
+        
+        // Status
+        var statusEl = document.getElementById('gic-status');
+        var statusText = '';
+        if (guest.status === 'walking_to_goal' && guest.current_goal) {
+            var gd = BLDGS[guest.current_goal.type];
+            statusText = 'Walking to ' + (gd ? gd.name : 'goal');
+        } else if (guest.status === 'seeking_food') {
+            statusText = 'Looking for food';
+        } else if (guest.status === 'in_attraction' || guest.in_attraction) {
+            var ad = guest._attr_x != null ? PPT.game.findBuildingAtCoord(guest._attr_x, guest._attr_y) : null;
+            var an = ad ? (BLDGS[ad.type] ? BLDGS[ad.type].name : ad.type) : 'attraction';
+            statusText = 'In ' + an;
+        } else if (guest.status === 'leaving') {
+            statusText = 'Leaving the park';
+        } else {
+            statusText = 'Wandering';
+        }
+        statusEl.textContent = statusText;
+        
+        // Hunger bar
+        var hungerPct = Math.round(guest.hunger || 0);
+        document.getElementById('gic-hunger').style.width = hungerPct + '%';
+        
+        // Thirst bar
+        var thirstPct = Math.round(guest.thirst || 0);
+        document.getElementById('gic-thirst').style.width = thirstPct + '%';
+        
+        // Spent
+        document.getElementById('gic-spent').textContent = 'Spent: \u20ac' + (guest.money_spent || guest.spent || 0);
+    };
+    
     PPT.ui.showGuestCard = function(guest) {
         var card = document.getElementById('guest-info-card');
         if (!card) return;
         G.inspectedGuest = guest;
         PPT.ui.hideStallCard(); // close stall card if open
+        PPT.ui.hideStaffCard(); // close staff card if open
         
         var TYPES = PPT.config.GUEST_TYPES;
         var td = TYPES[guest.type];
@@ -966,7 +1105,7 @@
         // Spent
         document.getElementById('gic-spent').textContent = 'Spent: \u20ac' + (guest.money_spent || guest.spent || 0);
         
-        // Position near the guest on-screen
+        // Position near the guest on-screen (only on initial open)
         var parkCanvas = document.getElementById('park-canvas');
         if (parkCanvas) {
             var r = parkCanvas.getBoundingClientRect();
@@ -997,6 +1136,7 @@
         var card = document.getElementById('stall-info-card');
         if (!card) return;
         PPT.ui.hideGuestCard(); // close guest card if open
+        PPT.ui.hideStaffCard(); // close staff card if open
         
         var scenario = PPT.currentScenario;
         var d = scenario ? scenario.buildings[building.type] : null;
@@ -1013,7 +1153,7 @@
         document.getElementById('sic-sold').textContent = 'Sold today: ' + (building.sales_today || 0);
         document.getElementById('sic-revenue').textContent = 'Revenue today: \u20ac' + (building.revenue_today || 0);
         
-        // Position near the building
+        // Position near the building (only on initial open)
         var parkCanvas = document.getElementById('park-canvas');
         if (parkCanvas) {
             var r = parkCanvas.getBoundingClientRect();
@@ -1043,6 +1183,7 @@
         var card = document.getElementById('stall-info-card');
         if (!card) return;
         PPT.ui.hideGuestCard();
+        PPT.ui.hideStaffCard();
         
         var scenario = PPT.currentScenario;
         var d = scenario ? scenario.buildings[building.type] : null;
@@ -1050,13 +1191,24 @@
         
         G._inspectedStall = building;
         
-        var pop = PPT.game.getPopularity(building);
         var cap = PPT.game.getCapacity(building);
+        var visitors = building.current_visitors || 0;
+        var isBroken = (G.rideBreakdowns || []).some(function(bd) { return bd.x === building.x && bd.y === building.y; });
+        
+        // Popularity as text
+        var pop = PPT.game.getPopularity(building);
+        var popLabel = 'Unknown';
+        if (pop < 1) popLabel = 'Low';
+        else if (pop < 2) popLabel = 'Moderate';
+        else if (pop < 4) popLabel = 'Popular';
+        else if (pop < 8) popLabel = 'Very Popular';
+        else if (pop < 15) popLabel = 'Blockbuster';
+        else popLabel = 'Legendary';
         
         document.getElementById('sic-name').textContent = d.name;
-        document.getElementById('sic-type').textContent = 'Type: ' + (d.cat === 'coaster' ? 'Coaster' : 'Ride');
-        document.getElementById('sic-price').textContent = 'Popularity: ' + pop.toFixed(1);
-        document.getElementById('sic-visitors').textContent = 'Guests: ' + (building.current_visitors || 0) + '/' + cap;
+        document.getElementById('sic-type').textContent = isBroken ? 'Broken down!' : visitors + ' guest' + (visitors !== 1 ? 's' : '') + ' on ride';
+        document.getElementById('sic-price').textContent = 'Popularity: ' + popLabel;
+        document.getElementById('sic-visitors').textContent = 'Capacity: ' + cap;
         document.getElementById('sic-sold').textContent = 'Running cost: \u20ac' + (d.run || 0) + '/day';
         document.getElementById('sic-revenue').textContent = '';
         
@@ -1076,6 +1228,74 @@
         }
         
         card.style.display = 'block';
+    };
+    
+    // ==================== STAFF INFO CARD ====================
+    
+    PPT.ui.showStaffCard = function(staffSprite) {
+        var card = document.getElementById('staff-info-card');
+        if (!card) return;
+        PPT.ui.hideGuestCard();
+        PPT.ui.hideStallCard();
+        
+        G._inspectedStaff_sprite = staffSprite;
+        
+        var scenario = PPT.currentScenario;
+        var sd = scenario.staff ? scenario.staff[staffSprite.type] : null;
+        if (!sd) return;
+        
+        document.getElementById('staff-ic-name').textContent = sd.name;
+        document.getElementById('staff-ic-type').textContent = staffSprite.type.charAt(0).toUpperCase() + staffSprite.type.slice(1);
+        
+        // Status
+        var moving = staffSprite.tx && staffSprite.wait <= 0;
+        document.getElementById('staff-ic-status').textContent = moving ? 'Patrolling' : 'Idle';
+        
+        // Draw staff portrait
+        var spriteCanvas = document.getElementById('staff-ic-sprite');
+        if (spriteCanvas) {
+            var ctx = spriteCanvas.getContext('2d');
+            ctx.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
+            ctx.imageSmoothingEnabled = false;
+            if (staffSprite._staffSheet) {
+                ctx.drawImage(staffSprite._staffSheet, 0, 0, 16, 16, 4, 4, 24, 24);
+            }
+        }
+        
+        document.getElementById('staff-ic-salary').textContent = 'Salary: \u20ac' + sd.salary + '/day';
+        var effectNames = { cleanliness: 'Keeps the park clean', reliability: 'Repairs rides', fun: 'Entertains guests' };
+        document.getElementById('staff-ic-effect').textContent = effectNames[sd.effect] || sd.effect;
+        
+        // Position near the staff on-screen
+        var parkCanvas = document.getElementById('park-canvas');
+        if (parkCanvas) {
+            var r = parkCanvas.getBoundingClientRect();
+            var scaleX = r.width / parkCanvas.width;
+            var scaleY = r.height / parkCanvas.height;
+            var screenX = r.left + staffSprite.x * scaleX;
+            var screenY = r.top + staffSprite.y * scaleY;
+            
+            var cardW = 200, cardH = 140;
+            var left = Math.min(Math.max(screenX + 14, 4), window.innerWidth - cardW - 4);
+            var top = Math.min(Math.max(screenY - cardH / 2, 4), window.innerHeight - cardH - 4);
+            card.style.left = left + 'px';
+            card.style.top = top + 'px';
+        }
+        
+        card.style.display = 'block';
+    };
+    
+    PPT.ui.refreshStaffCard = function(staffSprite) {
+        var card = document.getElementById('staff-info-card');
+        if (!card || card.style.display === 'none') return;
+        var moving = staffSprite.tx && staffSprite.wait <= 0;
+        document.getElementById('staff-ic-status').textContent = moving ? 'Patrolling' : 'Idle';
+    };
+    
+    PPT.ui.hideStaffCard = function() {
+        var card = document.getElementById('staff-info-card');
+        if (card) card.style.display = 'none';
+        if (G) G._inspectedStaff_sprite = null;
     };
     
     // ==================== TOOLTIPS ====================
@@ -1468,6 +1688,9 @@
         drawIcon(document.getElementById('sell-panel-icon')?.getContext('2d'), 'sell', 32);
         drawIcon(document.getElementById('demolish-tool-icon')?.getContext('2d'), 'sell', 16);
         
+        // Mobile bottom bar icons
+        PPT.ui.initMobileIcons();
+        
         PPT.ui.updateTimeIcon();
         PPT.ui.updateHappyIcon();
         
@@ -1653,6 +1876,188 @@
         el.style.left = '50%';
         el.style.top = '50%';
         el.style.transform = 'translate(-50%, -50%)';
+    };
+    
+    // ==================== MOBILE MENU SYSTEM ====================
+    
+    var MOBILE_MENUS = {
+        build:  [
+            { cat: 'paths',    label: 'Paths' },
+            { cat: 'rides',    label: 'Rides' },
+            { cat: 'coasters', label: 'Coasters' },
+            { cat: 'food',     label: 'Food' },
+            { cat: 'decor',    label: 'Decor' }
+        ],
+        manage: [
+            { cat: 'staff',      label: 'Staff' },
+            { cat: 'tickets',    label: 'Tickets' },
+            { cat: 'objectives', label: 'Goals' }
+        ],
+        sell: [] // no tabs
+    };
+    
+    PPT.ui.openMobileMenu = function(menu) {
+        var overlay = document.getElementById('mobile-menu-overlay');
+        if (!overlay) return;
+        
+        // Deactivate sell mode when opening other menus
+        G.demolishMode = false;
+        G.selected = null;
+        var sellBtn = document.getElementById('mob-sell-btn');
+        if (sellBtn) sellBtn.classList.remove('mob-sell-active');
+        
+        overlay.style.display = 'flex';
+        document.getElementById('mmo-title').textContent =
+            menu === 'build' ? 'Build' : menu === 'manage' ? 'Manage' : 'Sell';
+        
+        var tabs = MOBILE_MENUS[menu] || [];
+        var tabsEl = document.getElementById('mmo-tabs');
+        tabsEl.innerHTML = '';
+        
+        if (tabs.length > 0) {
+            tabsEl.style.display = 'flex';
+            tabs.forEach(function(t, i) {
+                var btn = document.createElement('button');
+                btn.className = 'mmo-tab' + (i === 0 ? ' active' : '');
+                btn.textContent = t.label;
+                btn.dataset.cat = t.cat;
+                btn.onclick = function() {
+                    tabsEl.querySelectorAll('.mmo-tab').forEach(function(b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    PPT.ui._showMobilePanel(t.cat);
+                };
+                tabsEl.appendChild(btn);
+            });
+            // Show first tab
+            PPT.ui._showMobilePanel(tabs[0].cat);
+        } else {
+            tabsEl.style.display = 'none';
+            PPT.ui._showMobilePanel('sell');
+        }
+        
+        G._mobileMenuOpen = menu;
+        PPT.ui.updateMobileTabDots();
+        PPT.audio.playSound('click');
+    };
+    
+    PPT.ui._showMobilePanel = function(cat) {
+        var contentEl = document.getElementById('mmo-content');
+        
+        // Move previously borrowed panel content back
+        if (G._mobilePanelNode) {
+            document.getElementById('panelScroll').appendChild(G._mobilePanelNode);
+            G._mobilePanelNode = null;
+        }
+        
+        // Find the panel content in the build-panel and move it into overlay
+        var panel = document.querySelector('#panelScroll .panel-content[data-panel="' + cat + '"]');
+        if (panel) {
+            contentEl.innerHTML = '';
+            contentEl.appendChild(panel);
+            panel.classList.add('active');
+            G._mobilePanelNode = panel;
+        }
+        
+        // Trigger side effects via switchCat (sync pricing, build objectives, sell mode)
+        // But suppress the build-panel uncollapse
+        G.demolishMode = (cat === 'sell');
+        if (cat === 'tickets') PPT.ui.syncPricingPanel();
+        if (cat === 'objectives') PPT.ui.buildObjectivesPanel();
+        if (cat !== 'sell') {
+            G.selected = null;
+            document.querySelectorAll('.build-item').forEach(function(e) { e.classList.remove('selected'); });
+        }
+    };
+    
+    PPT.ui.closeMobileMenu = function() {
+        var contentEl = document.getElementById('mmo-content');
+        
+        // Move borrowed panel content back
+        if (G._mobilePanelNode) {
+            document.getElementById('panelScroll').appendChild(G._mobilePanelNode);
+            G._mobilePanelNode = null;
+        }
+        contentEl.innerHTML = '';
+        
+        document.getElementById('mobile-menu-overlay').style.display = 'none';
+        G._mobileMenuOpen = null;
+        G.demolishMode = false;
+        G.selected = null;
+        document.querySelectorAll('.build-item').forEach(function(e) { e.classList.remove('selected'); });
+        PPT.audio.playSound('click');
+    };
+    
+    PPT.ui.initMobileIcons = function() {
+        var drawIcon = PPT.render.drawIcon;
+        drawIcon(document.getElementById('mob-build-icon')?.getContext('2d'), 'mob-build', 32);
+        drawIcon(document.getElementById('mob-manage-icon')?.getContext('2d'), 'mob-manage', 32);
+        drawIcon(document.getElementById('mob-sell-icon')?.getContext('2d'), 'mob-sell', 32);
+    };
+    
+    // Update notification dots on mobile buttons + tabs
+    PPT.ui.updateMobileNotifDots = function() {
+        // Check if goals have unclaimed rewards
+        var goals = PPT.currentScenario ? PPT.currentScenario.goals : null;
+        var hasUnclaimed = false;
+        if (goals) {
+            for (var i = 0; i < goals.length; i++) {
+                if (G.goalsAchieved[i] && !G.goalsClaimed[i]) { hasUnclaimed = true; break; }
+            }
+        }
+        
+        // Manage button dot
+        var manageBtn = document.getElementById('mob-manage-btn');
+        if (manageBtn) {
+            var dot = manageBtn.querySelector('.mob-notif-dot');
+            if (hasUnclaimed && !dot) {
+                dot = document.createElement('span');
+                dot.className = 'mob-notif-dot';
+                manageBtn.appendChild(dot);
+            } else if (!hasUnclaimed && dot) {
+                dot.remove();
+            }
+        }
+        
+        PPT.ui.updateMobileTabDots();
+    };
+    
+    PPT.ui.toggleMobileSell = function() {
+        G.demolishMode = !G.demolishMode;
+        G.selected = null;
+        document.querySelectorAll('.build-item').forEach(function(e) { e.classList.remove('selected'); });
+        var btn = document.getElementById('mob-sell-btn');
+        if (btn) btn.classList.toggle('mob-sell-active', G.demolishMode);
+        if (G.demolishMode) {
+            PPT.ui.showNotif('Sell mode: tap a building to remove it (+60% refund)', 'info');
+        }
+        PPT.audio.playSound('click');
+    };
+    
+    // Update dots on individual tabs inside the overlay
+    PPT.ui.updateMobileTabDots = function() {
+        var tabsEl = document.getElementById('mmo-tabs');
+        if (!tabsEl) return;
+        
+        var goals = PPT.currentScenario ? PPT.currentScenario.goals : null;
+        var hasUnclaimed = false;
+        if (goals) {
+            for (var i = 0; i < goals.length; i++) {
+                if (G.goalsAchieved[i] && !G.goalsClaimed[i]) { hasUnclaimed = true; break; }
+            }
+        }
+        
+        tabsEl.querySelectorAll('.mmo-tab').forEach(function(tab) {
+            var existingDot = tab.querySelector('.mmo-tab-dot');
+            if (tab.dataset.cat === 'objectives' && hasUnclaimed) {
+                if (!existingDot) {
+                    var d = document.createElement('span');
+                    d.className = 'mmo-tab-dot';
+                    tab.appendChild(d);
+                }
+            } else {
+                if (existingDot) existingDot.remove();
+            }
+        });
     };
     
 })();

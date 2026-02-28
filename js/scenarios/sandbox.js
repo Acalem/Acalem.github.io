@@ -57,20 +57,20 @@
             'grand-avenue':  { cost: 120,   run: 0,   cat: 'path',    name: 'Grand Avenue' },
             
             // Rides - all unlocked
-            'spiral-slide':      { cost: 1200,  run: 220,  cat: 'ride',    name: 'Spiral Slide' },
-            'merry-go-round':    { cost: 1600,  run: 260,  cat: 'ride',    name: 'Carousel' },
-            'ferris-wheel':      { cost: 2000,  run: 300,  cat: 'ride',    name: 'Ferris Wheel' },
-            'haunted-house':     { cost: 2400,  run: 340,  cat: 'ride',    name: 'Haunted House' },
-            'pirate-ship':       { cost: 2800,  run: 380,  cat: 'ride',    name: 'Pirate Ship' },
-            'observation-tower': { cost: 3200,  run: 420,  cat: 'ride',    name: 'Observation Tower' },
+            'spiral-slide':      { cost: 1200,  run: 220,  cat: 'ride',    name: 'Spiral Slide',      time: 5,  capacity: 8 },
+            'merry-go-round':    { cost: 1600,  run: 260,  cat: 'ride',    name: 'Carousel',          time: 8,  capacity: 14 },
+            'ferris-wheel':      { cost: 2000,  run: 300,  cat: 'ride',    name: 'Ferris Wheel',      time: 12, capacity: 16 },
+            'haunted-house':     { cost: 2400,  run: 340,  cat: 'ride',    name: 'Haunted House',     time: 10, capacity: 10 },
+            'pirate-ship':       { cost: 2800,  run: 380,  cat: 'ride',    name: 'Pirate Ship',       time: 8,  capacity: 20 },
+            'observation-tower': { cost: 3200,  run: 420,  cat: 'ride',    name: 'Observation Tower', time: 10, capacity: 12 },
             
             // Coasters - all unlocked
-            'wild-mouse':      { cost: 4000,  run: 500,  cat: 'coaster', size: 2, name: 'Wild Mouse' },
-            'junior-coaster':  { cost: 5000,  run: 600,  cat: 'coaster', size: 2, name: 'Junior Coaster' },
-            'steel-coaster':   { cost: 7000,  run: 800,  cat: 'coaster', size: 2, name: 'Steel Coaster' },
-            'wooden-coaster':  { cost: 8000,  run: 900,  cat: 'coaster', size: 2, name: 'Wooden Coaster' },
-            'hyper-coaster':   { cost: 12000, run: 1300, cat: 'coaster', size: 2, name: 'Hyper Coaster' },
-            'giga-coaster':    { cost: 15000, run: 1600, cat: 'coaster', size: 2, name: 'Giga Coaster' },
+            'wild-mouse':      { cost: 4000,  run: 500,  cat: 'coaster', size: 2, name: 'Wild Mouse',     time: 8,  capacity: 12 },
+            'junior-coaster':  { cost: 5000,  run: 600,  cat: 'coaster', size: 2, name: 'Junior Coaster', time: 10, capacity: 18 },
+            'steel-coaster':   { cost: 7000,  run: 800,  cat: 'coaster', size: 2, name: 'Steel Coaster',  time: 12, capacity: 24 },
+            'wooden-coaster':  { cost: 8000,  run: 900,  cat: 'coaster', size: 2, name: 'Wooden Coaster', time: 14, capacity: 24 },
+            'hyper-coaster':   { cost: 12000, run: 1300, cat: 'coaster', size: 2, name: 'Hyper Coaster',  time: 16, capacity: 32 },
+            'giga-coaster':    { cost: 15000, run: 1600, cat: 'coaster', size: 2, name: 'Giga Coaster',   time: 18, capacity: 40 },
             
             // Food - all unlocked
             'cotton-candy':  { cost: 600,  run: 144, cat: 'food', name: 'Cotton Candy' },

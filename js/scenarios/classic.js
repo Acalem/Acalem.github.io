@@ -81,20 +81,20 @@
             'grand-avenue':  { cost: 120,   run: 0,   cat: 'path',    name: 'Grand Avenue',   unlock: 'Open for Business' },
             
             // Rides (run calculated with formula above)
-            'spiral-slide':      { cost: 1200,  run: 260,  cat: 'ride',    name: 'Spiral Slide' },
-            'merry-go-round':    { cost: 1600,  run: 290,  cat: 'ride',    name: 'Carousel' },
-            'ferris-wheel':      { cost: 2000,  run: 320,  cat: 'ride',    name: 'Ferris Wheel' },
-            'haunted-house':     { cost: 2400,  run: 345,  cat: 'ride',    name: 'Haunted House' },
-            'pirate-ship':       { cost: 2800,  run: 370,  cat: 'ride',    name: 'Pirate Ship',       unlock: 'First Steps' },
-            'observation-tower': { cost: 3200,  run: 390,  cat: 'ride',    name: 'Observation Tower', unlock: 'Open for Business' },
+            'spiral-slide':      { cost: 1200,  run: 260,  cat: 'ride',    name: 'Spiral Slide',      time: 5,  capacity: 8 },
+            'merry-go-round':    { cost: 1600,  run: 290,  cat: 'ride',    name: 'Carousel',          time: 8,  capacity: 14 },
+            'ferris-wheel':      { cost: 2000,  run: 320,  cat: 'ride',    name: 'Ferris Wheel',      time: 12, capacity: 16 },
+            'haunted-house':     { cost: 2400,  run: 345,  cat: 'ride',    name: 'Haunted House',     time: 10, capacity: 10 },
+            'pirate-ship':       { cost: 2800,  run: 370,  cat: 'ride',    name: 'Pirate Ship',       time: 8,  capacity: 20, unlock: 'First Steps' },
+            'observation-tower': { cost: 3200,  run: 390,  cat: 'ride',    name: 'Observation Tower', time: 10, capacity: 12, unlock: 'Open for Business' },
             
             // Coasters (run calculated with formula above)
-            'wild-mouse':      { cost: 4000,  run: 430,  cat: 'coaster', size: 2, name: 'Wild Mouse' },
-            'junior-coaster':  { cost: 5000,  run: 475,  cat: 'coaster', size: 2, name: 'Junior Coaster' },
-            'steel-coaster':   { cost: 7000,  run: 550,  cat: 'coaster', size: 2, name: 'Steel Coaster' },
-            'wooden-coaster':  { cost: 8000,  run: 585,  cat: 'coaster', size: 2, name: 'Wooden Coaster' },
-            'hyper-coaster':   { cost: 12000, run: 705,  cat: 'coaster', size: 2, name: 'Hyper Coaster',  unlock: 'Thrill Capital' },
-            'giga-coaster':    { cost: 15000, run: 785,  cat: 'coaster', size: 2, name: 'Giga Coaster',   unlock: 'Five Star Park' },
+            'wild-mouse':      { cost: 4000,  run: 430,  cat: 'coaster', size: 2, name: 'Wild Mouse',     time: 8,  capacity: 12 },
+            'junior-coaster':  { cost: 5000,  run: 475,  cat: 'coaster', size: 2, name: 'Junior Coaster', time: 10, capacity: 18 },
+            'steel-coaster':   { cost: 7000,  run: 550,  cat: 'coaster', size: 2, name: 'Steel Coaster',  time: 12, capacity: 24 },
+            'wooden-coaster':  { cost: 8000,  run: 585,  cat: 'coaster', size: 2, name: 'Wooden Coaster', time: 14, capacity: 24 },
+            'hyper-coaster':   { cost: 12000, run: 705,  cat: 'coaster', size: 2, name: 'Hyper Coaster',  time: 16, capacity: 32, unlock: 'Thrill Capital' },
+            'giga-coaster':    { cost: 15000, run: 785,  cat: 'coaster', size: 2, name: 'Giga Coaster',   time: 18, capacity: 40, unlock: 'Five Star Park' },
             
             // Food (run = cost * 0.24, unchanged)
             'cotton-candy':  { cost: 600,  run: 144, cat: 'food', name: 'Cotton Candy' },

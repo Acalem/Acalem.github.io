@@ -1325,56 +1325,82 @@
         }
     }
     
-    // ==================== MOBILE PAN OVERLAY ====================
+    // ==================== MOBILE TOUCH PANNING ====================
     
     function setupPanOverlay() {
-        var parkContainer = document.getElementById('park-container');
-        var panOverlay = document.getElementById('pan-overlay');
-        var leftArrow = document.getElementById('pan-arrow-left');
-        var rightArrow = document.getElementById('pan-arrow-right');
+        var canvasWrapper = document.getElementById('canvas-wrapper');
         var parkCanvas = document.getElementById('park-canvas');
+        if (!canvasWrapper || !parkCanvas) return;
         
-        if (!parkContainer || !panOverlay || !leftArrow || !rightArrow) return;
-        
-        // Draw pixel art arrows (50x50 size)
-        drawPanArrow(leftArrow, 'left');
-        drawPanArrow(rightArrow, 'right');
-        
-        var panTimeout;
         var isMobile = window.matchMedia('(max-width: 768px)').matches || 'ontouchstart' in window;
+        if (!isMobile) return;
         
-        if (isMobile) {
-            // Show overlay briefly on game start to hint at scrolling
-            setTimeout(function() {
-                if (parkContainer.scrollWidth > parkContainer.clientWidth) {
-                    panOverlay.classList.add('visible');
-                    panTimeout = setTimeout(function() {
-                        panOverlay.classList.remove('visible');
-                    }, 2000);
-                }
-            }, 500);
+        // Pan state
+        var panX = 0, panY = 0;
+        var isPanning = false;
+        var touchStartX = 0, touchStartY = 0;
+        var panStartX = 0, panStartY = 0;
+        var PAN_THRESHOLD = 8; // px before we recognize a pan vs tap
+        var touchMoved = false;
+        
+        function getPanLimits() {
+            var parkRect = parkCanvas.getBoundingClientRect();
+            var scale = parkRect.width / 640;
+            // 2 grid tiles = 64 canvas pixels
+            var limit = 64 * scale;
+            return { x: limit, y: limit };
+        }
+        
+        function applyPan() {
+            canvasWrapper.style.transform = 'translate(' + panX + 'px, ' + panY + 'px)';
+        }
+        
+        // Listen on parkContainer to catch all touches over the game area
+        var parkContainer = document.getElementById('park-container');
+        
+        parkContainer.addEventListener('touchstart', function(e) {
+            // Only pan when no tool is active and not carrying a guest
+            if (G.selected || G.demolishMode || G.carriedGuest) return;
+            if (e.touches.length !== 1) return;
             
-            // Show overlay when touching the park area (if nothing selected)
-            var showPanHint = function() {
-                if (!G.selected && !G.demolishMode && parkContainer.scrollWidth > parkContainer.clientWidth) {
-                    panOverlay.classList.add('visible');
-                    if (panTimeout) clearTimeout(panTimeout);
-                    panTimeout = setTimeout(function() {
-                        panOverlay.classList.remove('visible');
-                    }, 1500);
-                }
-            };
+            var t = e.touches[0];
+            touchStartX = t.clientX;
+            touchStartY = t.clientY;
+            panStartX = panX;
+            panStartY = panY;
+            touchMoved = false;
+            isPanning = false;
+        }, { passive: true });
+        
+        parkContainer.addEventListener('touchmove', function(e) {
+            if (G.selected || G.demolishMode || G.carriedGuest) return;
+            if (e.touches.length !== 1) return;
             
-            parkContainer.addEventListener('touchstart', showPanHint, { passive: true });
-            if (parkCanvas) {
-                parkCanvas.addEventListener('touchstart', showPanHint, { passive: true });
+            var t = e.touches[0];
+            var dx = t.clientX - touchStartX;
+            var dy = t.clientY - touchStartY;
+            
+            if (!isPanning && (Math.abs(dx) > PAN_THRESHOLD || Math.abs(dy) > PAN_THRESHOLD)) {
+                isPanning = true;
+                touchMoved = true;
             }
             
-            parkContainer.addEventListener('scroll', function() {
-                if (panTimeout) clearTimeout(panTimeout);
-                panOverlay.classList.remove('visible');
-            }, { passive: true });
-        }
+            if (isPanning) {
+                e.preventDefault();
+                var limits = getPanLimits();
+                panX = Math.max(-limits.x, Math.min(limits.x, panStartX + dx));
+                panY = Math.max(-limits.y, Math.min(limits.y, panStartY + dy));
+                applyPan();
+            }
+        }, { passive: false });
+        
+        parkContainer.addEventListener('touchend', function() {
+            isPanning = false;
+        }, { passive: true });
+        
+        // Store touchMoved check for the existing touch handlers
+        G._panTouchMoved = function() { return touchMoved; };
+        G._resetPan = function() { panX = 0; panY = 0; applyPan(); };
     }
     
     function drawPanArrow(canvas, direction) {
@@ -1590,6 +1616,9 @@
         
         // Setup canvas event handlers
         parkCanvas.addEventListener('click', function(e) {
+            // Skip if we were panning on mobile
+            if (G._panTouchMoved && G._panTouchMoved()) return;
+            
             var r = parkCanvas.getBoundingClientRect();
             var cx = (e.clientX - r.left) * (parkCanvas.width / r.width);
             var cy = (e.clientY - r.top) * (parkCanvas.height / r.height);
@@ -1613,20 +1642,27 @@
                     PPT.ui.showGuestCard(guest);
                 } else {
                     PPT.ui.hideGuestCard();
-                    // Try to inspect a building (food stall or attraction)
-                    var building = PPT.game.findBuildingAtCoord(x, y);
-                    if (building && !building.building) {
-                        var scenario = PPT.currentScenario;
-                        var d = scenario ? scenario.buildings[building.type] : null;
-                        if (d && d.cat === 'food') {
-                            PPT.ui.showStallCard(building);
-                        } else if (d && (d.cat === 'ride' || d.cat === 'coaster')) {
-                            PPT.ui.showAttractionCard(building);
+                    // Try to inspect a staff member
+                    var staffSprite = PPT.game.inspectStaffAt(cx, cy);
+                    if (staffSprite) {
+                        PPT.ui.showStaffCard(staffSprite);
+                    } else {
+                        PPT.ui.hideStaffCard();
+                        // Try to inspect a building (food stall or attraction)
+                        var building = PPT.game.findBuildingAtCoord(x, y);
+                        if (building && !building.building) {
+                            var scenario = PPT.currentScenario;
+                            var d = scenario ? scenario.buildings[building.type] : null;
+                            if (d && d.cat === 'food') {
+                                PPT.ui.showStallCard(building);
+                            } else if (d && (d.cat === 'ride' || d.cat === 'coaster')) {
+                                PPT.ui.showAttractionCard(building);
+                            } else {
+                                PPT.ui.hideStallCard();
+                            }
                         } else {
                             PPT.ui.hideStallCard();
                         }
-                    } else {
-                        PPT.ui.hideStallCard();
                     }
                 }
             }
@@ -1678,13 +1714,12 @@
                 return;
             }
             
-            // Long-press detection for guest pickup
+            // Long-press detection for guest pickup (only if not panning)
             var guest = PPT.game.inspectGuestAt(cx, cy);
             if (guest) {
-                e.preventDefault();
                 longPressGuest = guest;
                 longPressTimer = setTimeout(function() {
-                    if (longPressGuest === guest) {
+                    if (longPressGuest === guest && !(G._panTouchMoved && G._panTouchMoved())) {
                         G.inspectedGuest = guest;
                         PPT.game.pickUpGuest();
                         longPressGuest = null;
@@ -1713,14 +1748,17 @@
             if (longPressTimer) {
                 clearTimeout(longPressTimer);
                 longPressTimer = null;
-                // Short tap on guest = inspect
-                if (longPressGuest) {
+                // Short tap on guest = inspect (but not if we were panning)
+                if (longPressGuest && !(G._panTouchMoved && G._panTouchMoved())) {
                     PPT.ui.showGuestCard(longPressGuest);
                     longPressGuest = null;
                 }
                 return;
             }
             longPressGuest = null;
+            
+            // Skip tap actions if we were panning
+            if (G._panTouchMoved && G._panTouchMoved()) return;
             
             if (G.carriedGuest) {
                 PPT.game.dropGuest(G.carriedGuest.x + 4, G.carriedGuest.y + 5);
@@ -1773,14 +1811,49 @@
             }
         });
         
-        // Dismiss guest card on click outside
+        // Dismiss info cards on click outside
         document.addEventListener('click', function(e) {
-            var card = document.getElementById('guest-info-card');
-            if (!card || card.style.display === 'none') return;
-            if (card.contains(e.target)) return;
+            var guestCard = document.getElementById('guest-info-card');
+            var stallCard = document.getElementById('stall-info-card');
+            var staffCard = document.getElementById('staff-info-card');
+            
             if (parkCanvas.contains(e.target)) return; // canvas click handles its own
-            PPT.ui.hideGuestCard();
+            
+            if (guestCard && guestCard.style.display !== 'none' && !guestCard.contains(e.target)) {
+                PPT.ui.hideGuestCard();
+            }
+            if (stallCard && stallCard.style.display !== 'none' && !stallCard.contains(e.target)) {
+                PPT.ui.hideStallCard();
+            }
+            if (staffCard && staffCard.style.display !== 'none' && !staffCard.contains(e.target)) {
+                PPT.ui.hideStaffCard();
+            }
         });
+        
+        // Make info cards draggable
+        function makeDraggable(card) {
+            if (!card) return;
+            var isDragging = false, startX, startY, startLeft, startTop;
+            card.addEventListener('mousedown', function(e) {
+                // Don't drag if clicking a button or interactive element
+                if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseInt(card.style.left) || 0;
+                startTop = parseInt(card.style.top) || 0;
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                card.style.left = (startLeft + e.clientX - startX) + 'px';
+                card.style.top = (startTop + e.clientY - startY) + 'px';
+            });
+            document.addEventListener('mouseup', function() { isDragging = false; });
+        }
+        makeDraggable(document.getElementById('guest-info-card'));
+        makeDraggable(document.getElementById('stall-info-card'));
+        makeDraggable(document.getElementById('staff-info-card'));
         
         // Setup mobile pan overlay
         setupPanOverlay();
