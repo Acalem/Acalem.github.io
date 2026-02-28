@@ -1345,10 +1345,19 @@
         
         function getPanLimits() {
             var parkRect = parkCanvas.getBoundingClientRect();
+            var containerRect = document.getElementById('park-container').getBoundingClientRect();
             var scale = parkRect.width / 640;
             // 2 grid tiles = 64 canvas pixels
-            var limit = 64 * scale;
-            return { x: limit, y: limit };
+            var twoTiles = 64 * scale;
+            
+            // How much of the park is already clipped by the viewport on each axis
+            var overflowX = Math.max(0, (parkRect.width - containerRect.width) / 2);
+            var overflowY = Math.max(0, (parkRect.height - containerRect.height) / 2);
+            
+            return {
+                x: overflowX + twoTiles,
+                y: overflowY + twoTiles
+            };
         }
         
         function applyPan() {
@@ -1359,6 +1368,10 @@
         var parkContainer = document.getElementById('park-container');
         
         parkContainer.addEventListener('touchstart', function(e) {
+            // Always reset touchMoved so tool taps work after panning
+            touchMoved = false;
+            isPanning = false;
+            
             // Only pan when no tool is active and not carrying a guest
             if (G.selected || G.demolishMode || G.carriedGuest) return;
             if (e.touches.length !== 1) return;
@@ -1368,8 +1381,6 @@
             touchStartY = t.clientY;
             panStartX = panX;
             panStartY = panY;
-            touchMoved = false;
-            isPanning = false;
         }, { passive: true });
         
         parkContainer.addEventListener('touchmove', function(e) {
@@ -1693,10 +1704,14 @@
         });
         var longPressTimer = null;
         var longPressGuest = null;
+        var touchStartPos = null; // track touch position for tap detection
         parkCanvas.addEventListener('touchstart', function(e) {
             var t = e.touches[0], r = parkCanvas.getBoundingClientRect();
             var cx = (t.clientX - r.left) * (parkCanvas.width / r.width);
             var cy = (t.clientY - r.top) * (parkCanvas.height / r.height);
+            
+            // Store raw touch position for touchend
+            touchStartPos = { clientX: t.clientX, clientY: t.clientY };
             
             if (G.carriedGuest) {
                 e.preventDefault();
@@ -1753,24 +1768,43 @@
                     PPT.ui.showGuestCard(longPressGuest);
                     longPressGuest = null;
                 }
+                touchStartPos = null;
                 return;
             }
             longPressGuest = null;
             
             // Skip tap actions if we were panning
-            if (G._panTouchMoved && G._panTouchMoved()) return;
+            if (G._panTouchMoved && G._panTouchMoved()) { touchStartPos = null; return; }
             
             if (G.carriedGuest) {
                 PPT.game.dropGuest(G.carriedGuest.x + 4, G.carriedGuest.y + 5);
+                touchStartPos = null;
                 return;
             }
-            if (!G.hover) return;
-            if (G.demolishMode) {
-                PPT.game.demolish(G.hover.x, G.hover.y);
-            } else if (G.selected) {
-                PPT.game.place(G.hover.x, G.hover.y, G.selected);
+            
+            // For demolish/build: calculate coords fresh from changedTouches
+            // This is more robust than relying on G.hover set during touchstart
+            if (G.demolishMode || G.selected) {
+                var touch = (e.changedTouches && e.changedTouches[0]) || touchStartPos;
+                if (touch) {
+                    var r = parkCanvas.getBoundingClientRect();
+                    var cx = (touch.clientX - r.left) * (parkCanvas.width / r.width);
+                    var cy = (touch.clientY - r.top) * (parkCanvas.height / r.height);
+                    var gx = Math.floor(cx / PPT.config.TILE_SIZE);
+                    var gy = Math.floor(cy / PPT.config.TILE_SIZE);
+                    if (G.demolishMode) {
+                        PPT.game.demolish(gx, gy);
+                    } else if (G.selected) {
+                        PPT.game.place(gx, gy, G.selected);
+                    }
+                }
+                G.hover = null;
+                touchStartPos = null;
+                return;
             }
+            
             G.hover = null;
+            touchStartPos = null;
         });
         
         // Setup icon button hover effects

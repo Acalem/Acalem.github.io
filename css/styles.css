@@ -2444,6 +2444,10 @@ body {
         overflow: hidden !important;
         justify-content: center;
         padding-right: 0;
+        touch-action: none;
+    }
+    #canvas-wrapper {
+        will-change: transform;
     }
     #park-canvas {
         min-width: unset;
